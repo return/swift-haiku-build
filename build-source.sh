@@ -51,11 +51,12 @@ else
 fi
 
 # Test if the compiler-rt directory exists
-if [ -d "./compiler-rt" ]; then
-  echo "The compiler-rt directory already exists, not cloning"
-else
-  git clone https://github.com/apple/swift-compiler-rt -b $tag --depth=1 compiler-rt
-fi
+# Disable compiler-rt for now
+#if [ -d "./compiler-rt" ]; then
+#  echo "The compiler-rt directory already exists, not cloning"
+#else
+#  git clone https://github.com/apple/swift-compiler-rt -b $tag --depth=1 compiler-rt
+#fi
 
 
 pushd swift

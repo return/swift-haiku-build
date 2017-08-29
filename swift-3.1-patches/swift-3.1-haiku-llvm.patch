@@ -1,0 +1,122 @@
+From 2b3fdb719145c4fd1457736e6e3708647fcf0ba7 Mon Sep 17 00:00:00 2001
+From: Calvin Hill <calvin@hakobaito.co.uk>
+Date: Mon, 3 Apr 2017 11:01:21 +0100
+Subject: [PATCH] swift-llvm: Add Haiku build support
+
+swift-llvm: [GSoC 2017] Disable threads and allow clang to build
+itself.
+
+Clang was encountering issues when compiling LLVM. This commit
+works around the issue by setting LLVM_THREADING_USE_STD_CALL_ONCE
+to 0. However, Clang can only build itself when --enable-tls=0
+on gcc5 is set and this patch also applied.
+
+swift-llvm: [GSoC 2017] fix unrecognized flag error when building with Ninja.
+
+When building swift with Ninja, it fails due to a flag used by
+LLVM '-fcolor-diagnostics' which is not recognised by g++. This
+commit fixes this by using '-fdiagnostics-color=auto' instead.
+---
+ cmake/modules/HandleLLVMOptions.cmake |  2 +-
+ include/llvm/Support/Threading.h      |  2 +-
+ lib/Support/APFloat.cpp               |  1 +
+ lib/Support/Threading.cpp             |  2 +-
+ tools/llvm-config/llvm-config.cpp     | 23 ++++++++++++++++++-----
+ 5 files changed, 22 insertions(+), 8 deletions(-)
+
+diff --git a/cmake/modules/HandleLLVMOptions.cmake b/cmake/modules/HandleLLVMOptions.cmake
+index 7a6b058a7dc..a6c7b22e5cb 100644
+--- a/cmake/modules/HandleLLVMOptions.cmake
++++ b/cmake/modules/HandleLLVMOptions.cmake
+@@ -586,7 +586,7 @@ add_llvm_definitions( -D__STDC_LIMIT_MACROS )
+ if (UNIX AND
+     CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND
+     CMAKE_GENERATOR STREQUAL "Ninja")
+-  append("-fcolor-diagnostics" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
++  append("-fdiagnostics-color=auto" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
+ endif()
+ 
+ # Add flags for add_dead_strip().
+diff --git a/include/llvm/Support/Threading.h b/include/llvm/Support/Threading.h
+index 0e9b88e69fb..45a9bfa16ff 100644
+--- a/include/llvm/Support/Threading.h
++++ b/include/llvm/Support/Threading.h
+@@ -24,7 +24,7 @@
+ // libstdc++. That platform has a bug they are working to fix, and they'll
+ // remove the NetBSD checks once fixed.
+ #if defined(LLVM_ON_UNIX) &&                                                   \
+-    !(defined(__NetBSD__) && !defined(_LIBCPP_VERSION)) && !defined(__ppc__)
++    !(defined(__HAIKU__) && !defined(_LIBCPP_VERSION)) && !defined(__ppc__)
+ #define LLVM_THREADING_USE_STD_CALL_ONCE 1
+ #else
+ #define LLVM_THREADING_USE_STD_CALL_ONCE 0
+diff --git a/lib/Support/APFloat.cpp b/lib/Support/APFloat.cpp
+index f9370b85234..33f8877886b 100644
+--- a/lib/Support/APFloat.cpp
++++ b/lib/Support/APFloat.cpp
+@@ -94,6 +94,7 @@ namespace llvm {
+   const unsigned int maxPowerOfFiveExponent = maxExponent + maxPrecision - 1;
+   const unsigned int maxPowerOfFiveParts = 2 + ((maxPowerOfFiveExponent * 815)
+                                                 / (351 * integerPartWidth));
++  int ilogb(const APFloat &Arg);
+ }
+ 
+ /* A bunch of private, handy routines.  */
+diff --git a/lib/Support/Threading.cpp b/lib/Support/Threading.cpp
+index 760f9e2c388..18c870e937e 100644
+--- a/lib/Support/Threading.cpp
++++ b/lib/Support/Threading.cpp
+@@ -23,7 +23,7 @@
+ using namespace llvm;
+ 
+ bool llvm::llvm_is_multithreaded() {
+-#if LLVM_ENABLE_THREADS != 0
++#if LLVM_ENABLE_THREADS != 0 || LLVM_ENABLE_THREADS
+   return true;
+ #else
+   return false;
+diff --git a/tools/llvm-config/llvm-config.cpp b/tools/llvm-config/llvm-config.cpp
+index 94d426be361..5c92ef0ffcb 100644
+--- a/tools/llvm-config/llvm-config.cpp
++++ b/tools/llvm-config/llvm-config.cpp
+@@ -327,7 +327,11 @@ int main(int argc, char **argv) {
+         ("-I" + ActiveIncludeDir + " " + "-I" + ActiveObjRoot + "/include");
+   } else {
+     ActivePrefix = CurrentExecPrefix;
++#ifdef __HAIKU__
++    ActiveIncludeDir = ActivePrefix + "/develop/headers";
++#else
+     ActiveIncludeDir = ActivePrefix + "/include";
++#endif
+     ActiveBinDir = ActivePrefix + "/bin";
+     ActiveLibDir = ActivePrefix + "/lib" + LLVM_LIBDIR_SUFFIX;
+     ActiveIncludeOption = "-I" + ActiveIncludeDir;
+@@ -536,11 +540,20 @@ int main(int argc, char **argv) {
+       } else if (Arg == "--has-global-isel") {
+         OS << LLVM_HAS_GLOBAL_ISEL << '\n';
+       } else if (Arg == "--shared-mode") {
+-        PrintSharedMode = true;
+-      } else if (Arg == "--obj-root") {
+-        OS << ActivePrefix << '\n';
+-      } else if (Arg == "--src-root") {
+-        OS << LLVM_SRC_ROOT << '\n';
++        PrintSharedMode = true;        
++      } else if (Arg == "--obj-root" || Arg == "--src-root") {
++        if (IsInDevelopmentTree) {
++          if (Arg == "--obj-root") {
++            OS << ActivePrefix << '\n';
++	   		}
++          else {
++            OS << LLVM_SRC_ROOT << '\n';
++	  		}
++        } 
++        else {
++          llvm::errs() << "llvm-config: sources not installed\n";
++          exit(1);
++        }
+       } else if (Arg == "--link-shared") {
+         LinkMode = LinkModeShared;
+       } else if (Arg == "--link-static") {
+-- 
+2.11.0
+

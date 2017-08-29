@@ -1,0 +1,4 @@
+./swift/utils/build-script -R --extra-cmake-options='-DLLVM_ENABLE_ASSERTIONS=TRUE \
+-DCMAKE_SKIP_RPATH=FALSE -DLLVM_ENABLE_RTTI=ON -DLLVM_TARGETS_TO_BUILD=X86 \
+-DLLVM_ENABLE_THREADS=ON -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC' \
+--stdlib-deployment-targets=haiku-x86_64 -j8

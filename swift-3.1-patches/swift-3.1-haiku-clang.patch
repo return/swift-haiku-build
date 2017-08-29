@@ -1,0 +1,48 @@
+From 0e19e13714f1a2f60d6685589ec99dc2ef8a2fce Mon Sep 17 00:00:00 2001
+From: "Joseph C, Hill" <calvin@hakobaito.co.uk>
+Date: Wed, 29 Mar 2017 14:02:34 +0000
+Subject: [PATCH] swift-clang: [GSoC 2017] Reapplied haiku patches from
+ Haikuports and enabled support for TLS in clang.
+
+This commit allows Haiku to build clang with TLS enabled by default.
+It is also required for self-hosting LLVM/Clang on Haiku.
+---
+ lib/Basic/Targets.cpp |  2 +-
+ test/Driver/haiku.c   | 12 ++++++++++++
+ 2 files changed, 13 insertions(+), 1 deletion(-)
+ create mode 100644 test/Driver/haiku.c
+
+diff --git a/lib/Basic/Targets.cpp b/lib/Basic/Targets.cpp
+index 4d6308e50a..dea5d8c626 100644
+--- a/lib/Basic/Targets.cpp
++++ b/lib/Basic/Targets.cpp
+@@ -420,7 +420,7 @@ public:
+     this->IntPtrType = TargetInfo::SignedLong;
+     this->PtrDiffType = TargetInfo::SignedLong;
+     this->ProcessIDType = TargetInfo::SignedLong;
+-    this->TLSSupported = false;
++    this->TLSSupported = true;
+ 
+   }
+ };
+diff --git a/test/Driver/haiku.c b/test/Driver/haiku.c
+new file mode 100644
+index 0000000000..9591739640
+--- /dev/null
++++ b/test/Driver/haiku.c
+@@ -0,0 +1,12 @@
++// RUN: %clang -no-canonical-prefixes -target x86_64-unknown-haiku %s -### 2> %t.log
++// RUN: FileCheck --check-prefix=CHECK-X86_64 -input-file %t.log %s
++
++// CHECK-X86_64: clang{{.*}}" "-cc1" "-triple" "x86_64-unknown-haiku"
++// CHECK-X86_64: gcc{{.*}}" "-o" "a.out" "{{.*}}.o"
++
++// RUN: %clang -no-canonical-prefixes -target i586-pc-haiku %s -### 2> %t.log
++// RUN: FileCheck --check-prefix=CHECK-X86 -input-file %t.log %s
++
++// CHECK-X86: clang{{.*}}" "-cc1" "-triple" "i586-pc-haiku"
++// CHECK-X86: gcc{{.*}}" "-o" "a.out" "{{.*}}.o"
++
+-- 
+2.11.0
+

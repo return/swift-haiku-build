@@ -1,0 +1,1291 @@
+From 49c0bab5c3d301bfd95ef64e2c935176cde1c481 Mon Sep 17 00:00:00 2001
+From: Calvin Hill <calvin@hakobaito.co.uk>
+Date: Wed, 29 Mar 2017 13:36:00 +0000
+Subject: [PATCH] swift: [GSoC 2017] Add the Haiku platform to build-script
+
+This commit adds early support for 64 bit Haiku (x86_64-unknown-haiku)
+for the build-script and it also allows the host system running Haiku to
+run this script.
+
+It currently does not build, but it enables the script to be detecting
+Haiku has the host OS.
+
+swift: [GSoC 2017] Add early platform support for x86_64-unknown-haiku
+
+This commit allows swift to be completely built on Haiku, excluding testing support.
+At the moment, the compiler and runtime is non-functional, but all other
+developer tools work as expected.
+
+As for the frontend (swiftc) it can parse swift sources and emit SIL/IR
+but fails to generate a executable. (It polls forever when compiling a hello world.)
+
+stdlib: [GSoC 2017] Implement ELF image inspection for Haiku.
+
+ELF Image Inspection is used by the runtime to perform lookups
+on metadata in generated swift dynamic libraries.
+
+This commit reimplements this functionality for Haiku by using
+get_next_image_info() as a way of retrieving the loaded libraries via
+the dl_iterate_phdr() function.
+
+This early implementation will be tested in the future.
+
+stdlib: [GSoC 2017] Temporarily workaround locking issues residing in
+MetadataCache on Haiku.
+
+The section has been specifically commented out, as it causes Haiku to
+crash when attempting to acquire a invalid lock. It would be better to
+investigate the Haiku pthreads implementation on the issue but for now,
+uncommenting it for Haiku will suffice.
+
+stdlib: [GSoC 2017] Cleanup ImageInspection code.
+
+This commit just cleans up the ImageInspection logic as suggested
+and reviewed by my mentors.
+
+stdlib: [GSoC 2017] disable runtime debug_info
+
+ImageInspection: [GSoC 2017] use define dl_iterate_phdr macro for Haiku
+As reviewed by my mentor (korli), this commit simplifies the macro used
+for defining the replace function _dl_iterate_phdr as dl_iterate_phdr.
+
+TaskQueue: [GSoC 2017] Use fallback implementation to process compilation tasks.
+Using the fallback implementation, rather than the Unix implementation allows Haiku
+to successfully compile a swift source file to an executable.
+
+The problem that the Unix implementation on Haiku had, was that poll() was not hanging
+sending the POLLHUP signal when data was being received. As of a result, it was reading
+no data and looped infinitely. See https://dev.haiku-os.org/ticket/7859
+
+stdlib: [GSoC 2017] fix Haiku glibc module maps
+
+This commit adds small fixes into the GlibC module mappings
+used for interoperating with C and Swift.
+
+stdlib/unittests: [GSoC 2017] Refactored several files in stdlib and unittests for improving Haiku support.
+ (And removed lots of hacks/workarounds.)
+
+lib/Driver/ToolChains.cpp
+
+	* Removed useless platform macro in Darwin toolchain.
+
+stdlib/private/StdlibUnittest/RaceTest.swift
+
+	* Remove platform macro(s) in response to Haiku's time_t switch to 64 bit.
+
+stdlib/public/Platform/glibc.modulemap.gyb
+
+	* Small changes in SDK logic.
+
+	* Removed linking with pthread in Haiku.
+
+unittests/runtime/CMakeLists.txt
+
+	* Properly add Haiku support for runtime Tests.
+
+unittests/runtime/LongTests/CMakeLists.txt
+
+	* Properly add Haiku support for runtinme LongTests.
+
+unittests/runtime/Metadata.cpp
+
+	* Remove platform macro. _POSIX_BARRIERS const is defined in hrev51284.
+
+toolchains: [GSoC 2017] Pass -use-ld instead of -fuse-ld on Haiku.
+
+Haiku's clang compiler doesn't recognise the -fuse-ld flag and fails to link
+any executable automatically. Appending -use-ld fixes this issue.
+
+build-script-impl: [GSoC 2017] Enable building libdispatch on Haiku.
+This commit enables building the initial libdispatch port on Haiku and also
+skips the libdispatch tests. (They currently don't build yet.)
+---
+ CMakeLists.txt                                     | 10 +---
+ cmake/modules/AddSwift.cmake                       |  2 +-
+ include/swift/Basic/LangOptions.h                  |  3 +-
+ include/swift/Runtime/Concurrent.h                 |  4 +-
+ include/swift/Runtime/Mutex.h                      |  2 +-
+ include/swift/Runtime/MutexPThread.h               |  4 ++
+ lib/Basic/Default/TaskQueue.inc                    |  3 +-
+ lib/Basic/LangOptions.cpp                          |  3 +
+ lib/Basic/Platform.cpp                             |  3 +-
+ lib/Basic/TaskQueue.cpp                            |  2 +-
+ lib/Driver/Driver.cpp                              |  3 +
+ lib/Driver/ToolChains.cpp                          |  4 ++
+ stdlib/private/StdlibUnittest/RaceTest.swift       |  2 +-
+ .../StdlibUnittest/StdlibUnittest.swift.gyb        | 29 +++++++++-
+ .../private/SwiftPrivateLibcExtras/CMakeLists.txt  |  1 +
+ stdlib/private/SwiftPrivateLibcExtras/Subprocess.c |  4 +-
+ .../SwiftPrivateLibcExtras/Subprocess.swift        | 11 +++-
+ .../SwiftPrivateLibcExtras.swift                   |  4 +-
+ .../SwiftPrivatePthreadExtras/CMakeLists.txt       |  1 +
+ .../PthreadBarriers.swift                          |  6 +-
+ .../SwiftPrivatePthreadExtras.swift                |  4 +-
+ stdlib/public/Platform/CMakeLists.txt              | 18 ++++--
+ stdlib/public/Platform/Misc.c                      |  5 +-
+ stdlib/public/Platform/POSIXError.swift            |  2 +-
+ stdlib/public/Platform/Platform.swift              | 34 ++++++++++-
+ stdlib/public/Platform/glibc.modulemap.gyb         | 65 ++++++++++++++++++++-
+ stdlib/public/Platform/tgmath.swift.gyb            |  4 +-
+ stdlib/public/core/CMakeLists.txt                  |  6 ++
+ stdlib/public/runtime/Errors.cpp                   |  2 +-
+ stdlib/public/runtime/ImageInspectionELF.cpp       | 67 +++++++++++++++++++++-
+ stdlib/public/runtime/MetadataCache.h              | 15 +++--
+ stdlib/public/stubs/LibcShims.cpp                  |  7 +++
+ stdlib/public/stubs/Stubs.cpp                      | 19 ++++--
+ test/lit.cfg                                       |  9 ++-
+ unittests/runtime/CMakeLists.txt                   |  2 +-
+ unittests/runtime/LongTests/CMakeLists.txt         |  2 +-
+ unittests/runtime/Metadata.cpp                     |  1 +
+ utils/build-script-impl                            | 10 +++-
+ 38 files changed, 311 insertions(+), 62 deletions(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index efea4ce8a1..b396b17060 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -603,14 +603,8 @@ elseif("${SWIFT_HOST_VARIANT_SDK}" STREQUAL "HAIKU")
+   set(CMAKE_EXECUTABLE_FORMAT "ELF")
+   set(SWIFT_HOST_VARIANT "haiku" CACHE STRING
+       "Deployment OS for Swift host tools (the compiler) [haiku].")
+-  #set(SWIFT_HOST_TRIPLE "x86_64-unknown-haiku")
+-
+-  # FIXME: Using the host OS version won't produce correct results for
+-  # cross-compilation.
+-  #string(REPLACE "[-].*" "" FREEBSD_SYSTEM_VERSION ${CMAKE_SYSTEM_VERSION})
+-  #message(STATUS "FreeBSD Version: ${FREEBSD_SYSTEM_VERSION}")
+-  #configure_sdk_unix(HAIKU "Haiku" "haiku" "haiku" "x86_64" "x86_64-unknown-haiku")
+-  configure_sdk_unix(HAIKU "Haiku" "HAIKU" "${SWIFT_HOST_VARIANT}" "${SWIFT_HOST_VARIANT_ARCH}" "${SWIFT_HOST_TRIPLE}" "/")
++  set(SWIFT_HOST_TRIPLE "x86_64-unknown-haiku")
++  configure_sdk_unix(HAIKU "Haiku" "haiku" "${SWIFT_HOST_VARIANT}" "${SWIFT_HOST_VARIANT_ARCH}" "${SWIFT_HOST_TRIPLE}" "/")
+   set(SWIFT_PRIMARY_VARIANT_SDK_default  "${SWIFT_HOST_VARIANT_SDK}")
+   set(SWIFT_PRIMARY_VARIANT_ARCH_default "x86_64")
+ 
+diff --git a/cmake/modules/AddSwift.cmake b/cmake/modules/AddSwift.cmake
+index 12ce99e369..953fa18279 100644
+--- a/cmake/modules/AddSwift.cmake
++++ b/cmake/modules/AddSwift.cmake
+@@ -333,7 +333,7 @@ function(_add_variant_link_flags)
+   elseif("${LFLAGS_SDK}" STREQUAL "FREEBSD")
+     list(APPEND result "-lpthread")
+   elseif("${LFLAGS_SDK}" STREQUAL "HAIKU")
+-    list(APPEND result "-lpthread" "-lroot" "-ldl")
++	  list(APPEND result "-fPIC" "-lpthread" "-lroot" "-lbsd" "-Wl,-Bsymbolic")
+   elseif("${LFLAGS_SDK}" STREQUAL "CYGWIN")
+     # No extra libraries required.
+   elseif("${LFLAGS_SDK}" STREQUAL "WINDOWS")
+diff --git a/include/swift/Basic/LangOptions.h b/include/swift/Basic/LangOptions.h
+index 5b1f17c0b4..78e9d01866 100644
+--- a/include/swift/Basic/LangOptions.h
++++ b/include/swift/Basic/LangOptions.h
+@@ -184,7 +184,8 @@ namespace swift {
+         Target.getOSVersion(major, minor, revision);
+       } else if (Target.isOSLinux() || Target.isOSFreeBSD() ||
+                  Target.isAndroid() || Target.isOSWindows() ||
+-                 Target.isPS4() || Target.getTriple().empty()) {
++                 Target.isPS4() || llvm::Triple::Haiku ||
++                 Target.getTriple().empty()) {
+         major = minor = revision = 0;
+       } else {
+         llvm_unreachable("Unsupported target OS");
+diff --git a/include/swift/Runtime/Concurrent.h b/include/swift/Runtime/Concurrent.h
+index fe369dd622..66d91e9baf 100644
+--- a/include/swift/Runtime/Concurrent.h
++++ b/include/swift/Runtime/Concurrent.h
+@@ -17,10 +17,10 @@
+ #include <stdint.h>
+ #include "llvm/Support/Allocator.h"
+ 
+-#if defined(__FreeBSD__)
++#if defined(__FreeBSD__) || defined(__HAIKU__)
+ #include <stdio.h>
+ #endif
+-
++#define NDEBUG 1
+ namespace swift {
+ 
+ /// This is a node in a concurrent linked list.
+diff --git a/include/swift/Runtime/Mutex.h b/include/swift/Runtime/Mutex.h
+index be26eff4c6..135b0ea104 100644
+--- a/include/swift/Runtime/Mutex.h
++++ b/include/swift/Runtime/Mutex.h
+@@ -20,7 +20,7 @@
+ 
+ #include <type_traits>
+ 
+-#if (defined(__APPLE__) || defined(__linux__) || defined(__CYGWIN__) || defined(__FreeBSD__))
++#if (defined(__APPLE__) || defined(__linux__) || defined(__CYGWIN__) || defined(__FreeBSD__) || defined(__HAIKU__))
+ #include "swift/Runtime/MutexPThread.h"
+ #elif defined(_WIN32)
+ #include "swift/Runtime/MutexWin32.h"
+diff --git a/include/swift/Runtime/MutexPThread.h b/include/swift/Runtime/MutexPThread.h
+index 33b3a193bb..2fcd4f8d4e 100644
+--- a/include/swift/Runtime/MutexPThread.h
++++ b/include/swift/Runtime/MutexPThread.h
+@@ -103,7 +103,11 @@ struct ReadWriteLockPlatformHelper {
+ #endif
+       ReadWriteLockHandle
+       staticInit() {
++    // PTHREAD_RWLOCK_INITIALIZER Not defined in Haiku //
++    #ifndef __HAIKU__
+     return PTHREAD_RWLOCK_INITIALIZER;
++    # endif
++    return {0, 0, {}};
+   };
+ 
+   static void init(ReadWriteLockHandle &rwlock);
+diff --git a/lib/Basic/Default/TaskQueue.inc b/lib/Basic/Default/TaskQueue.inc
+index 9dcdeac1b0..ab97cfe1d7 100644
+--- a/lib/Basic/Default/TaskQueue.inc
++++ b/lib/Basic/Default/TaskQueue.inc
+@@ -68,7 +68,8 @@ unsigned TaskQueue::getNumberOfParallelTasks() const {
+ }
+ 
+ void TaskQueue::addTask(const char *ExecPath, ArrayRef<const char *> Args,
+-                        ArrayRef<const char *> Env, void *Context) {
++                        ArrayRef<const char *> Env, void *Context, bool SeparateErrors) {
++  (void)SeparateErrors;
+   std::unique_ptr<Task> T(new Task(ExecPath, Args, Env, Context));
+   QueuedTasks.push(std::move(T));
+ }
+diff --git a/lib/Basic/LangOptions.cpp b/lib/Basic/LangOptions.cpp
+index 19efc6356c..4d17ae30f6 100644
+--- a/lib/Basic/LangOptions.cpp
++++ b/lib/Basic/LangOptions.cpp
+@@ -35,6 +35,7 @@ static const StringRef SupportedConditionalCompilationOSs[] = {
+   "Windows",
+   "Android",
+   "PS4",
++  "Haiku",
+ };
+ 
+ static const StringRef SupportedConditionalCompilationArches[] = {
+@@ -158,6 +159,8 @@ std::pair<bool, bool> LangOptions::setTarget(llvm::Triple triple) {
+     addPlatformConditionValue("os", "Windows");
+   else if (triple.isPS4())
+     addPlatformConditionValue("os", "PS4");
++  else if (llvm::Triple::Haiku)
++    addPlatformConditionValue("os", "Haiku");
+   else
+     UnsupportedOS = true;
+ 
+diff --git a/lib/Basic/Platform.cpp b/lib/Basic/Platform.cpp
+index f39cbe37fb..695fa1defe 100644
+--- a/lib/Basic/Platform.cpp
++++ b/lib/Basic/Platform.cpp
+@@ -95,7 +95,6 @@ StringRef swift::getPlatformNameForTriple(const llvm::Triple &triple) {
+   case llvm::Triple::NetBSD:
+   case llvm::Triple::OpenBSD:
+   case llvm::Triple::Solaris:
+-  case llvm::Triple::Haiku:
+   case llvm::Triple::Minix:
+   case llvm::Triple::RTEMS:
+   case llvm::Triple::NaCl:
+@@ -122,6 +121,8 @@ StringRef swift::getPlatformNameForTriple(const llvm::Triple &triple) {
+     return "windows";
+   case llvm::Triple::PS4:
+     return "ps4";
++  case llvm::Triple::Haiku:
++    return "haiku";
+   }
+   llvm_unreachable("unsupported OS");
+ }
+diff --git a/lib/Basic/TaskQueue.cpp b/lib/Basic/TaskQueue.cpp
+index be94a2e133..7f6fcf7599 100644
+--- a/lib/Basic/TaskQueue.cpp
++++ b/lib/Basic/TaskQueue.cpp
+@@ -23,7 +23,7 @@ using namespace swift;
+ using namespace swift::sys;
+ 
+ // Include the correct TaskQueue implementation.
+-#if LLVM_ON_UNIX && !defined(__CYGWIN__)
++#if LLVM_ON_UNIX && !defined(__CYGWIN__) && !defined(__HAIKU__)
+ #include "Unix/TaskQueue.inc"
+ #else
+ #include "Default/TaskQueue.inc"
+diff --git a/lib/Driver/Driver.cpp b/lib/Driver/Driver.cpp
+index 3731b6e744..16dcabb5a7 100644
+--- a/lib/Driver/Driver.cpp
++++ b/lib/Driver/Driver.cpp
+@@ -182,6 +182,9 @@ makeToolChain(Driver &driver, const llvm::Triple &target) {
+   case llvm::Triple::FreeBSD:
+     return llvm::make_unique<toolchains::GenericUnix>(driver, target);
+     break;
++  case llvm::Triple::Haiku:
++    return llvm::make_unique<toolchains::GenericUnix>(driver, target);
++    break;
+   case llvm::Triple::Win32:
+     return llvm::make_unique<toolchains::Cygwin>(driver, target);
+     break;
+diff --git a/lib/Driver/ToolChains.cpp b/lib/Driver/ToolChains.cpp
+index 4c0b905f3b..c38458ec44 100644
+--- a/lib/Driver/ToolChains.cpp
++++ b/lib/Driver/ToolChains.cpp
+@@ -1365,7 +1365,11 @@ toolchains::GenericUnix::constructInvocation(const LinkJobAction &job,
+     Linker = getDefaultLinker();
+   }
+   if (!Linker.empty()) {
++#if defined(__HAIKU__)
++    Arguments.push_back(context.Args.MakeArgString("-use-ld=" + Linker));
++#else
+     Arguments.push_back(context.Args.MakeArgString("-fuse-ld=" + Linker));
++#endif
+   }
+ 
+   // Configure the toolchain.
+diff --git a/stdlib/private/StdlibUnittest/RaceTest.swift b/stdlib/private/StdlibUnittest/RaceTest.swift
+index 8558c2a676..13da04af19 100644
+--- a/stdlib/private/StdlibUnittest/RaceTest.swift
++++ b/stdlib/private/StdlibUnittest/RaceTest.swift
+@@ -528,6 +528,7 @@ class _InterruptibleSleep {
+ 
+   /// Sleep for durationInSeconds or until another
+   /// thread calls wake(), whichever comes first.
++
+   func sleep(durationInSeconds duration: Int) {
+     if completed {
+       return
+@@ -594,7 +595,6 @@ public func runRaceTest<RT : RaceTestWithPerTrialData>(
+       if stopNow { break }
+     }
+   }
+-
+   let alarmThreadBody = {
+     () -> Void in
+     guard let timeoutInSeconds = timeoutInSeconds
+diff --git a/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb b/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
+index 820718736e..0db23e0bc8 100644
+--- a/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
++++ b/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
+@@ -740,12 +740,21 @@ struct _ParentProcess {
+         errorfds.set(_childStderr.fd)
+       }
+       var ret: CInt
++      #if os(Haiku)
+       repeat {
+         ret = _stdlib_select(&readfds, &writefds, &errorfds, nil)
+-      } while ret == -1  &&  errno == EINTR
++      } 
++      while ret == -1 && errno == VINTR
++      #else
++      repeat {
++        ret = _stdlib_select(&readfds, &writefds, &errorfds, nil)
++      } 
++      while ret == -1 && errno == EINTR
++      #endif
+       if ret <= 0 {
+         fatalError("select() returned an error")
+       }
++     
+       if readfds.isset(_childStdout.fd) || errorfds.isset(_childStdout.fd) {
+         _childStdout.read()
+         while let line = _childStdout.getline() {
+@@ -1434,6 +1443,7 @@ public enum OSVersion : CustomStringConvertible {
+   case ps4
+   case windowsCygnus
+   case windows
++  case haiku
+ 
+   public var description: String {
+     switch self {
+@@ -1463,6 +1473,8 @@ public enum OSVersion : CustomStringConvertible {
+       return "Cygwin"
+     case .windows:
+       return "Windows"
++    case .haiku:
++      return "Haiku"
+     }
+   }
+ }
+@@ -1505,6 +1517,8 @@ func _getOSVersion() -> OSVersion {
+   return .windowsCygnus
+ #elseif os(Windows)
+   return .windows
++#elseif os(Haiku)
++  return .haiku
+ #else
+   let productVersion = _stdlib_getSystemVersionPlistProperty("ProductVersion")!
+   let (major, minor, bugFix) = _parseDottedVersionTriple(productVersion)
+@@ -1587,6 +1601,8 @@ public enum TestRunPredicate : CustomStringConvertible {
+ 
+   case windowsCygnusAny(reason: String)
+ 
++  case haikuAny(reason: String)
++
+   case objCRuntime(/*reason:*/ String)
+   case nativeRuntime(/*reason:*/ String)
+ 
+@@ -1679,6 +1695,9 @@ public enum TestRunPredicate : CustomStringConvertible {
+     case .windowsCygnusAny(reason: let reason):
+       return "windowsCygnusAny(*, reason: \(reason))"
+ 
++    case .haikuAny(reason: let reason):
++          return "haikuAny(*, reason: \(reason))"
++
+     case .objCRuntime(let reason):
+       return "Objective-C runtime, reason: \(reason))"
+     case .nativeRuntime(let reason):
+@@ -1962,6 +1981,14 @@ public enum TestRunPredicate : CustomStringConvertible {
+         return false
+       }
+ 
++    case .haikuAny:
++      switch _getRunningOSVersion() {
++      case .haiku:
++        return true
++      default:
++        return false
++      }
++
+     case .objCRuntime:
+ #if _runtime(_ObjC)
+       return true
+diff --git a/stdlib/private/SwiftPrivateLibcExtras/CMakeLists.txt b/stdlib/private/SwiftPrivateLibcExtras/CMakeLists.txt
+index 5381c5aa80..d25b1d75a9 100644
+--- a/stdlib/private/SwiftPrivateLibcExtras/CMakeLists.txt
++++ b/stdlib/private/SwiftPrivateLibcExtras/CMakeLists.txt
+@@ -14,4 +14,5 @@ add_swift_library(swiftSwiftPrivateLibcExtras ${SWIFT_STDLIB_LIBRARY_BUILD_TYPES
+   SWIFT_MODULE_DEPENDS_LINUX Glibc
+   SWIFT_MODULE_DEPENDS_FREEBSD Glibc
+   SWIFT_MODULE_DEPENDS_CYGWIN Glibc
++  SWIFT_MODULE_DEPENDS_HAIKU Glibc
+   INSTALL_IN_COMPONENT stdlib-experimental)
+diff --git a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.c b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.c
+index b9290110a4..2f75948fbe 100644
+--- a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.c
++++ b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.c
+@@ -11,7 +11,7 @@
+ //===----------------------------------------------------------------------===//
+ 
+ // posix_spawn is not available on Android or Windows (MSVC).
+-#if !defined(__ANDROID__) && (!defined(_WIN32) || defined(__CYGWIN__))
++#if !defined(__ANDROID__) && !defined(__HAIKU__) && (!defined(_WIN32) || defined(__CYGWIN__))
+ 
+ #include "swift/Runtime/Config.h"
+ 
+@@ -65,5 +65,5 @@ char ***swift_SwiftPrivateLibcExtras_NSGetEnviron(void) {
+   return _NSGetEnviron();
+ }
+ #endif // defined(__APPLE__)
+-#endif // !defined(__ANDROID__) && (!defined(_WIN32) || defined(__CGYWIN__))
++#endif // !defined(__ANDROID__) && !defined(__HAIKU__) && (!defined(_WIN32) || defined(__CGYWIN__))
+ 
+diff --git a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
+index 2e240ed400..c845444961 100644
+--- a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
++++ b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
+@@ -13,7 +13,7 @@
+ import SwiftPrivate
+ #if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
+ import Darwin
+-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN
++#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN || os(Haiku)
+ import Glibc
+ #endif
+ 
+@@ -21,6 +21,7 @@ import Glibc
+ #if !os(Windows) || CYGWIN
+ // posix_spawn is not available on Android or Windows.
+ #if !os(Android)
++#elseif !os(Haiku)
+ // swift_posix_spawn isn't available in the public watchOS SDK, we sneak by the
+ // unavailable attribute declaration here of the APIs that we need.
+ 
+@@ -28,6 +29,8 @@ import Glibc
+ // platforms but not others.
+ #if os(Linux)
+ typealias swift_posix_spawn_file_actions_t = posix_spawn_file_actions_t
++#elseif !os(Haiku)
++
+ #else
+ typealias swift_posix_spawn_file_actions_t = posix_spawn_file_actions_t?
+ #endif
+@@ -82,7 +85,7 @@ public func spawnChild(_ args: [String])
+   let childStdin = posixPipe()
+   let childStderr = posixPipe()
+ 
+-#if os(Android)
++#if os(Android) || os(Haiku)
+   // posix_spawn isn't available on Android. Instead, we fork and exec.
+   // To correctly communicate the exit status of the child process to this
+   // (parent) process, we'll use this pipe.
+@@ -222,6 +225,7 @@ public func spawnChild(_ args: [String])
+ }
+ 
+ #if !os(Android)
++#if !os(Haiku)
+ #if os(Linux)
+ internal func _make_posix_spawn_file_actions_t()
+   -> swift_posix_spawn_file_actions_t {
+@@ -234,6 +238,7 @@ internal func _make_posix_spawn_file_actions_t()
+ }
+ #endif
+ #endif
++#endif
+ 
+ internal func _signalToString(_ signal: Int) -> String {
+   switch CInt(signal) {
+@@ -302,6 +307,8 @@ internal func _getEnviron() -> UnsafeMutablePointer<UnsafeMutablePointer<CChar>?
+   return environ
+ #elseif CYGWIN
+   return environ
++#elseif os(Haiku)
++  return environ
+ #else
+   return __environ
+ #endif
+diff --git a/stdlib/private/SwiftPrivateLibcExtras/SwiftPrivateLibcExtras.swift b/stdlib/private/SwiftPrivateLibcExtras/SwiftPrivateLibcExtras.swift
+index 2850883eff..7f49763e21 100644
+--- a/stdlib/private/SwiftPrivateLibcExtras/SwiftPrivateLibcExtras.swift
++++ b/stdlib/private/SwiftPrivateLibcExtras/SwiftPrivateLibcExtras.swift
+@@ -13,7 +13,7 @@
+ import SwiftPrivate
+ #if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
+ import Darwin
+-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN
++#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN || os(Haiku)
+ import Glibc
+ #elseif os(Windows)
+ import ucrt
+@@ -21,7 +21,7 @@ import ucrt
+ 
+ #if !os(Windows) || CYGWIN
+ public func _stdlib_mkstemps(_ template: inout String, _ suffixlen: CInt) -> CInt {
+-#if os(Android)
++#if os(Android) || os(Haiku)
+   preconditionFailure("mkstemps doesn't work on Android")
+ #else
+   var utf8CStr = template.utf8CString
+diff --git a/stdlib/private/SwiftPrivatePthreadExtras/CMakeLists.txt b/stdlib/private/SwiftPrivatePthreadExtras/CMakeLists.txt
+index cf867d6028..327ef8a895 100644
+--- a/stdlib/private/SwiftPrivatePthreadExtras/CMakeLists.txt
++++ b/stdlib/private/SwiftPrivatePthreadExtras/CMakeLists.txt
+@@ -11,6 +11,7 @@ add_swift_library(swiftSwiftPrivatePthreadExtras ${SWIFT_STDLIB_LIBRARY_BUILD_TY
+   SWIFT_MODULE_DEPENDS_LINUX Glibc
+   SWIFT_MODULE_DEPENDS_FREEBSD Glibc
+   SWIFT_MODULE_DEPENDS_CYGWIN Glibc
++  SWIFT_MODULE_DEPENDS_HAIKU Glibc
+   SWIFT_COMPILE_FLAGS ${STDLIB_SIL_SERIALIZE_ALL}
+   TARGET_SDKS ALL_POSIX_PLATFORMS
+   INSTALL_IN_COMPONENT stdlib-experimental)
+diff --git a/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift b/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
+index 2ebe4b3acc..0ab0628a04 100644
+--- a/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
++++ b/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
+@@ -12,7 +12,7 @@
+ 
+ #if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
+ import Darwin
+-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN
++#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN || os(Haiku)
+ import Glibc
+ #endif
+ 
+@@ -69,7 +69,11 @@ public func _stdlib_pthread_barrier_init(
+ ) -> CInt {
+   barrier.pointee = _stdlib_pthread_barrier_t()
+   if count == 0 {
++  #if os(Haiku)
++  	errno = FE_INVALID
++ #else
+     errno = EINVAL
++ #endif
+     return -1
+   }
+   barrier.pointee.mutex = UnsafeMutablePointer.allocate(capacity: 1)
+diff --git a/stdlib/private/SwiftPrivatePthreadExtras/SwiftPrivatePthreadExtras.swift b/stdlib/private/SwiftPrivatePthreadExtras/SwiftPrivatePthreadExtras.swift
+index fe0c4f0658..1d5e7c41d1 100644
+--- a/stdlib/private/SwiftPrivatePthreadExtras/SwiftPrivatePthreadExtras.swift
++++ b/stdlib/private/SwiftPrivatePthreadExtras/SwiftPrivatePthreadExtras.swift
+@@ -17,7 +17,7 @@
+ 
+ #if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
+ import Darwin
+-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN
++#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN || os(Haiku)
+ import Glibc
+ #endif
+ 
+@@ -59,7 +59,7 @@ internal func invokeBlockContext(
+   return context.run()
+ }
+ 
+-#if CYGWIN || os(FreeBSD)
++#if CYGWIN || os(FreeBSD) || os(Haiku)
+ public typealias _stdlib_pthread_attr_t = UnsafePointer<pthread_attr_t?>
+ #else
+ public typealias _stdlib_pthread_attr_t = UnsafePointer<pthread_attr_t>
+diff --git a/stdlib/public/Platform/CMakeLists.txt b/stdlib/public/Platform/CMakeLists.txt
+index d6c3bc0382..f7d5e18970 100644
+--- a/stdlib/public/Platform/CMakeLists.txt
++++ b/stdlib/public/Platform/CMakeLists.txt
+@@ -48,17 +48,25 @@ foreach(sdk ${SWIFT_SDKS})
+     set(arch_subdir "${SWIFT_SDK_${sdk}_LIB_SUBDIR}/${arch}")
+     set(module_dir "${SWIFTLIB_DIR}/${arch_subdir}")
+ 
+-    # Determine the location of glibc headers based on the target.
+-    set(GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH "/usr/include")
+-    set(GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH ${GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH})
++    #if((${sdk} STREQUAL "HAIKU"))
++      set(GLIBC_INCLUDE_PATH "/system/develop/headers/posix")
++      set(GLIBC_ARCH_INCLUDE_PATH "/system/develop/headers/posix")
++      set(GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH "/system/develop/headers/")
++      #set(GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH ${GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH})
++    #endif()
+ 
++    if((${sdk} STREQUAL "LINUX" OR ${sdk} STREQUAL "FREEBSD") AND CMAKE_LIBRARY_ARCHITECTURE)
++      # Determine the location of glibc headers based on the target.
++      set(GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH "/usr/include")
++      set(GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH ${GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH})
++    endif()
+     # Some SDKs place their headers in architecture-specific subfolders.
+     if((${sdk} STREQUAL "LINUX" OR ${sdk} STREQUAL "FREEBSD") AND CMAKE_LIBRARY_ARCHITECTURE)
+       set(GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH}/${CMAKE_LIBRARY_ARCHITECTURE}")
+     endif()
+ 
+-    set(GLIBC_INCLUDE_PATH "${SWIFT_SDK_${sdk}_PATH}/${GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH}")
+-    set(GLIBC_ARCH_INCLUDE_PATH "${SWIFT_SDK_${sdk}_PATH}/${GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH}")
++    #set(GLIBC_INCLUDE_PATH "${SWIFT_SDK_${sdk}_PATH}/${GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH}")
++    #set(GLIBC_ARCH_INCLUDE_PATH "${SWIFT_SDK_${sdk}_PATH}/${GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH}")
+ 
+     set(glibc_modulemap_source "glibc.modulemap.gyb")
+     set(glibc_modulemap_out "${module_dir}/glibc.modulemap")
+diff --git a/stdlib/public/Platform/Misc.c b/stdlib/public/Platform/Misc.c
+index 8301baea5d..5e76e02923 100644
+--- a/stdlib/public/Platform/Misc.c
++++ b/stdlib/public/Platform/Misc.c
+@@ -23,6 +23,9 @@
+ #if !defined(_WIN32) || defined(__CYGWIN__)
+ #include <sys/ioctl.h>
+ #endif
++#if defined(__HAIKU__)
++#include <Errors.h>
++#endif
+ 
+ #include "swift/Runtime/Config.h"
+ 
+@@ -106,7 +109,6 @@ char **_swift_FreeBSD_getEnv() {
+   return environ;
+ }
+ #endif // defined(__FreeBSD__)
+-
+ SWIFT_CC(swift)
+ int _swift_Platform_getErrno() {
+   return errno;
+@@ -116,4 +118,3 @@ SWIFT_CC(swift)
+ void _swift_Platform_setErrno(int value) {
+   errno = value;
+ }
+-
+diff --git a/stdlib/public/Platform/POSIXError.swift b/stdlib/public/Platform/POSIXError.swift
+index e98b1e4a71..b3e768a374 100644
+--- a/stdlib/public/Platform/POSIXError.swift
++++ b/stdlib/public/Platform/POSIXError.swift
+@@ -264,7 +264,7 @@
+   // KERNEL.
+ }
+ 
+-#elseif os(Linux) || os(Android)
++#elseif os(Linux) || os(Android) || os(Haiku)
+ 
+ /// Enumeration describing POSIX error codes.
+ public enum POSIXErrorCode : Int32 {
+diff --git a/stdlib/public/Platform/Platform.swift b/stdlib/public/Platform/Platform.swift
+index 1512aa04bb..99acafc029 100644
+--- a/stdlib/public/Platform/Platform.swift
++++ b/stdlib/public/Platform/Platform.swift
+@@ -123,6 +123,35 @@ public var stderr : UnsafeMutablePointer<FILE> {
+   }
+ }
+ 
++#if os(Haiku)
++public var stdin : UnsafeMutablePointer<FILE> {
++  get {
++    return stdin
++  }
++  set {
++    stdinp = newValue
++  }
++}
++
++public var stdout : UnsafeMutablePointer<FILE> {
++  get {
++    return stdout
++  }
++  set {
++    stdoutp = newValue
++  }
++}
++
++public var stderr : UnsafeMutablePointer<FILE> {
++  get {
++    return stderr
++  }
++  set {
++    stderrp = newValue
++  }
++}
++#endif
++
+ public func dprintf(_ fd: Int, _ format: UnsafePointer<Int8>, _ args: CVarArg...) -> Int32 {
+   return withVaList(args) { va_args in
+     vdprintf(Int32(fd), format, va_args)
+@@ -136,7 +165,6 @@ public func snprintf(ptr: UnsafeMutablePointer<Int8>, _ len: Int, _ format: Unsa
+ }
+ #endif
+ 
+-
+ //===----------------------------------------------------------------------===//
+ // fcntl.h
+ //===----------------------------------------------------------------------===//
+@@ -367,7 +395,7 @@ public var SIG_DFL: sig_t? { return nil }
+ public var SIG_IGN: sig_t { return unsafeBitCast(1, to: sig_t.self) }
+ public var SIG_ERR: sig_t { return unsafeBitCast(-1, to: sig_t.self) }
+ public var SIG_HOLD: sig_t { return unsafeBitCast(5, to: sig_t.self) }
+-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android)
++#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || os(Haiku)
+ public typealias sighandler_t = __sighandler_t
+ 
+ public var SIG_DFL: sighandler_t? { return nil }
+@@ -417,7 +445,7 @@ public var SEM_FAILED: UnsafeMutablePointer<sem_t>? {
+ #if os(OSX) || os(iOS) || os(watchOS) || os(tvOS)
+   // The value is ABI.  Value verified to be correct for OS X, iOS, watchOS, tvOS.
+   return UnsafeMutablePointer<sem_t>(bitPattern: -1)
+-#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN
++#elseif os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN || os(Haiku)
+   // The value is ABI.  Value verified to be correct on Glibc.
+   return UnsafeMutablePointer<sem_t>(bitPattern: 0)
+ #else
+diff --git a/stdlib/public/Platform/glibc.modulemap.gyb b/stdlib/public/Platform/glibc.modulemap.gyb
+index 7f2d10917f..66ffcde966 100644
+--- a/stdlib/public/Platform/glibc.modulemap.gyb
++++ b/stdlib/public/Platform/glibc.modulemap.gyb
+@@ -26,10 +26,17 @@ module SwiftGlibc [system] {
+   link "util"
+ % end
+ 
+-% if CMAKE_SDK != "FREEBSD":
++% if CMAKE_SDK != "FREEBSD" and CMAKE_SDK != "HAIKU":
+   link "dl"
+ % end
+ 
++% if CMAKE_SDK == "HAIKU":
++  link "root"
++  link "network"
++  link "bsd"
++  link "execinfo"
++% end
++
+   // C standard library
+   module C {
+ % if CMAKE_SDK in ["LINUX", "FREEBSD", "CYGWIN"]:
+@@ -59,6 +66,13 @@ module SwiftGlibc [system] {
+     }
+ % end
+ 
++% if CMAKE_SDK == "HAIKU":
++    module pty {
++      header "${GLIBC_INCLUDE_PATH}/../bsd/pty.h"
++      export *
++    }
++% end
++
+ % if CMAKE_SDK in ["LINUX", "ANDROID", "CYGWIN"]:
+     module features {
+       header "${GLIBC_INCLUDE_PATH}/features.h"
+@@ -249,6 +263,49 @@ module SwiftGlibc [system] {
+     }
+ % end
+ 
++% if CMAKE_SDK in ["HAIKU"]:
++    module ftw {
++      header "${GLIBC_INCLUDE_PATH}/ftw.h"
++      export *
++    }
++    module glob {
++      header "${GLIBC_INCLUDE_PATH}/glob.h"
++      export *
++    }
++    module iconv {
++      header "${GLIBC_INCLUDE_PATH}/../iconv.h"
++      export *
++    }
++    module langinfo {
++      header "${GLIBC_INCLUDE_PATH}/langinfo.h"
++      export *
++    }
++    module monetary {
++      header "${GLIBC_INCLUDE_PATH}/monetary.h"
++      export *
++    }
++    module netdb {
++      header "${GLIBC_INCLUDE_PATH}/netdb.h"
++      export *
++    }
++    module ifaddrs {
++      header "${GLIBC_INCLUDE_PATH}/../bsd/ifaddrs.h"
++      export *
++    }
++    module search {
++      header "${GLIBC_INCLUDE_PATH}/search.h"
++      export *
++    }
++    module syslog {
++      header "${GLIBC_INCLUDE_PATH}/syslog.h"
++      export *
++    }
++    module tar {
++      header "${GLIBC_INCLUDE_PATH}/tar.h"
++      export *
++    }
++% end
++
+     module arpa {
+       module inet {
+         header "${GLIBC_INCLUDE_PATH}/arpa/inet.h"
+@@ -334,7 +391,7 @@ module SwiftGlibc [system] {
+     module sys {
+       export *
+ 
+-% if CMAKE_SDK in ["LINUX", "FREEBSD", "CYGWIN"]:
++% if CMAKE_SDK in ["LINUX", "FREEBSD", "CYGWIN", "HAIKU"]:
+       module file {
+         header "${GLIBC_ARCH_INCLUDE_PATH}/sys/file.h"
+         export *
+@@ -343,10 +400,12 @@ module SwiftGlibc [system] {
+         header "${GLIBC_ARCH_INCLUDE_PATH}/sys/sem.h"
+         export *
+       }
++% if CMAKE_SDK != "HAIKU":
+       module shm {
+         header "${GLIBC_ARCH_INCLUDE_PATH}/sys/shm.h"
+         export *
+       }
++% end
+       module statvfs {
+         header "${GLIBC_ARCH_INCLUDE_PATH}/sys/statvfs.h"
+         export *
+@@ -373,7 +432,7 @@ module SwiftGlibc [system] {
+         header "${GLIBC_ARCH_INCLUDE_PATH}/sys/select.h"
+         export *
+       }
+-% if CMAKE_SDK != "FREEBSD":
++% if CMAKE_SDK in ["LINUX", "CYGWIN"]:
+       module sendfile {
+         header "${GLIBC_ARCH_INCLUDE_PATH}/sys/sendfile.h"
+         export *
+diff --git a/stdlib/public/Platform/tgmath.swift.gyb b/stdlib/public/Platform/tgmath.swift.gyb
+index 55be7b3863..3ae3af33ec 100644
+--- a/stdlib/public/Platform/tgmath.swift.gyb
++++ b/stdlib/public/Platform/tgmath.swift.gyb
+@@ -213,7 +213,7 @@ public func ${bfunc}(_ lhs: ${T}, _ rhs: ${T}) -> ${T} {
+ @available(*, deprecated, message: "use the floatingPointClass property.")
+ public func fpclassify(_ value: ${T}) -> Int {
+ %if T == 'Double':
+-#if os(Linux)
++#if os(Linux) || os(Haiku)
+   return Int(__fpclassify(CDouble(value)))
+ #elseif os(Windows) && !CYGWIN
+   return Int(_dclass(CDouble(value)))
+@@ -297,7 +297,7 @@ public func scalbn(_ x: ${T}, _ n: Int) -> ${T} {
+ 
+ % # This is AllFloatTypes not OverlayFloatTypes because of the tuple return.
+ % for T, CT, f in AllFloatTypes():
+-#if os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN
++#if os(Linux) || os(FreeBSD) || os(PS4) || os(Android) || CYGWIN || os(Haiku)
+ @_transparent
+ public func lgamma(_ x: ${T}) -> (${T}, Int) {
+   var sign = Int32(0)
+diff --git a/stdlib/public/core/CMakeLists.txt b/stdlib/public/core/CMakeLists.txt
+index 7bcc315a17..6546d17c08 100644
+--- a/stdlib/public/core/CMakeLists.txt
++++ b/stdlib/public/core/CMakeLists.txt
+@@ -197,6 +197,12 @@ if(CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+       ${EXECINFO_LIBRARY})
+ endif()
+ 
++if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")
++  find_library(EXECINFO_LIBRARY execinfo)
++  list(APPEND swift_core_private_link_libraries
++      ${EXECINFO_LIBRARY})
++endif()
++
+ option(SWIFT_CHECK_ESSENTIAL_STDLIB
+     "Check core standard library layering by linking its essential subset"
+     FALSE)
+diff --git a/stdlib/public/runtime/Errors.cpp b/stdlib/public/runtime/Errors.cpp
+index 690f0517ca..32ebbe7784 100644
+--- a/stdlib/public/runtime/Errors.cpp
++++ b/stdlib/public/runtime/Errors.cpp
+@@ -14,7 +14,7 @@
+ //
+ //===----------------------------------------------------------------------===//
+ 
+-#if defined(__CYGWIN__) || defined(__ANDROID__) || defined(_WIN32)
++#if defined(__CYGWIN__) || defined(__ANDROID__) || defined(_WIN32) || defined(__HAIKU__)
+ #  define SWIFT_SUPPORTS_BACKTRACE_REPORTING 0
+ #else
+ #  define SWIFT_SUPPORTS_BACKTRACE_REPORTING 1
+diff --git a/stdlib/public/runtime/ImageInspectionELF.cpp b/stdlib/public/runtime/ImageInspectionELF.cpp
+index 059a12b424..83bbfe2683 100644
+--- a/stdlib/public/runtime/ImageInspectionELF.cpp
++++ b/stdlib/public/runtime/ImageInspectionELF.cpp
+@@ -18,12 +18,30 @@
+ 
+ #if defined(__ELF__) || defined(__ANDROID__)
+ 
++#if !defined(__HAIKU__)
++#include <link.h>
++#endif
++
+ #include "ImageInspection.h"
+ #include <elf.h>
+-#include <link.h>
+ #include <dlfcn.h>
+ #include <string.h>
+ 
++#if defined(__HAIKU__)
++#include <OS.h>
++#include <image.h>
++#include <unistd.h>
++#endif
++
++
++#if defined(__HAIKU__)
++#define dl_iterate_phdr _dl_iterate_phdr
++struct dl_phdr_info {
++	void *dlpi_addr;
++	const char *dlpi_name;
++};
++#endif
++
+ using namespace swift;
+ 
+ /// The symbol name in the image that identifies the beginning of the
+@@ -43,6 +61,38 @@ struct InspectArgs {
+   void (*addBlock)(const void *start, uintptr_t size);
+ };
+ 
++static int _dl_iterate_phdr(int (*callback)(struct dl_phdr_info *info, size_t size, void *data), void *data);
++
++#if defined(__HAIKU__)
++static int _dl_iterate_phdr(int (*callback)(struct dl_phdr_info *info, size_t size, void *data), void *data) {
++	pid_t team_id = getpid();
++	
++	image_info i_info;
++	int32 image_cookie = 0;
++
++	int ret = 0;
++	
++	while(get_next_image_info(team_id, &image_cookie, &i_info) == B_OK)
++	{
++	  if(i_info.type == B_LIBRARY_IMAGE)
++	  {
++	  // Get the symbol for this particular image //	
++	   dl_phdr_info hdr;
++	   hdr.dlpi_name = i_info.name;
++	   hdr.dlpi_addr = i_info.text;
++	   ret = callback(&hdr, sizeof(hdr), data);
++	   if (ret != 0)
++	   { break; }
++	  }
++	}
++
++	return ret;
++}
++#endif
++
++
++
++
+ static int iteratePHDRCallback(struct dl_phdr_info *info,
+                                size_t size, void *data) {
+   const InspectArgs *inspectArgs = reinterpret_cast<const InspectArgs *>(data);
+@@ -50,7 +100,11 @@ static int iteratePHDRCallback(struct dl_phdr_info *info,
+   if (!info->dlpi_name || info->dlpi_name[0] == '\0') {
+     handle = dlopen(nullptr, RTLD_LAZY);
+   } else {
++  #if defined(__HAIKU__)
++    handle = dlopen(info->dlpi_name, RTLD_LAZY | RTLD_LOCAL);
++  #else
+     handle = dlopen(info->dlpi_name, RTLD_LAZY | RTLD_NOLOAD);
++  #endif
+   }
+ 
+   if (!handle) {
+@@ -78,6 +132,8 @@ static int iteratePHDRCallback(struct dl_phdr_info *info,
+   return 0;
+ }
+ 
++
++
+ void swift::initializeProtocolConformanceLookup() {
+   // Search the loaded dls. This only searches the already
+   // loaded ones.
+@@ -87,7 +143,9 @@ void swift::initializeProtocolConformanceLookup() {
+     ProtocolConformancesSymbol,
+     addImageProtocolConformanceBlockCallback
+   };
++
+   dl_iterate_phdr(iteratePHDRCallback, &ProtocolConformanceArgs);
++
+ }
+ 
+ void swift::initializeTypeMetadataRecordLookup() {
+@@ -95,12 +153,17 @@ void swift::initializeTypeMetadataRecordLookup() {
+     TypeMetadataRecordsSymbol,
+     addImageTypeMetadataRecordBlockCallback
+   };
++
+   dl_iterate_phdr(iteratePHDRCallback, &TypeMetadataRecordArgs);
+ }
+ 
++
++
++
+ int swift::lookupSymbol(const void *address, SymbolInfo *info) {
+   Dl_info dlinfo;
+-  if (dladdr(address, &dlinfo) == 0) {
++  // Haiku's dladdr() implementation takes a void* rather than a const void*.
++  if (dladdr((void*)address, &dlinfo) == 0) {
+     return 0;
+   }
+ 
+diff --git a/stdlib/public/runtime/MetadataCache.h b/stdlib/public/runtime/MetadataCache.h
+index aca46968e6..ddb43ff5ed 100644
+--- a/stdlib/public/runtime/MetadataCache.h
++++ b/stdlib/public/runtime/MetadataCache.h
+@@ -298,6 +298,9 @@ public:
+ 
+     // If we didn't insert the entry, then we just need to get the
+     // initialized value from the entry.
++    // TODO: Haiku crashes in this section of code due to the locking issues 
++    // in line 316. Commenting this out only serves as a temporary workaround, but still not acceptable for upstreaming.
++   /*
+     if (!insertResult.second) {
+ 
+       // If the entry is already initialized, great.
+@@ -309,6 +312,7 @@ public:
+       // Otherwise, we have to grab the lock and wait for the value to
+       // appear there.  Note that we have to check again immediately
+       // after acquiring the lock to prevent a race.
++       
+       auto concurrency = Concurrency.get();
+       concurrency->Lock.withLockOrWait(concurrency->Queue, [&, this] {
+         if ((value = entry->getValue())) {
+@@ -330,7 +334,7 @@ public:
+ 
+       return value;
+     }
+-
++    */
+     // Otherwise, we created the entry and are responsible for
+     // creating the metadata.
+     auto value = builder();
+@@ -341,10 +345,11 @@ public:
+ #endif
+ 
+     // Acquire the lock, set the value, and notify any waiters.
+-    auto concurrency = Concurrency.get();
+-    concurrency->Lock.withLockThenNotifyAll(
+-        concurrency->Queue, [&entry, &value] { entry->setValue(value); });
+-
++    // TODO: Properly fix locking issues in Haiku.
++   // auto concurrency = Concurrency.get();
++   // concurrency->Lock.withLockThenNotifyAll(
++   //     concurrency->Queue, [&entry, &value] { entry->setValue(value); });
++	
+     return value;
+   }
+ };
+diff --git a/stdlib/public/stubs/LibcShims.cpp b/stdlib/public/stubs/LibcShims.cpp
+index cb28b86bd3..96ccb7d517 100644
+--- a/stdlib/public/stubs/LibcShims.cpp
++++ b/stdlib/public/stubs/LibcShims.cpp
+@@ -120,6 +120,13 @@ SWIFT_RUNTIME_STDLIB_INTERFACE
+ size_t swift::_swift_stdlib_malloc_size(const void *ptr) {
+   return malloc_usable_size(const_cast<void *>(ptr));
+ }
++#elif defined(__HAIKU__)
++#define _GNU_SOURCE
++#include <malloc.h>
++SWIFT_RUNTIME_STDLIB_INTERFACE
++size_t swift::_swift_stdlib_malloc_size(const void *ptr) {
++  return malloc_usable_size(const_cast<void *>(ptr));
++}
+ #else
+ #error No malloc_size analog known for this platform/libc.
+ #endif
+diff --git a/stdlib/public/stubs/Stubs.cpp b/stdlib/public/stubs/Stubs.cpp
+index df15cdb2ac..a18d9fa5de 100644
+--- a/stdlib/public/stubs/Stubs.cpp
++++ b/stdlib/public/stubs/Stubs.cpp
+@@ -26,8 +26,10 @@
+ #define NOMINMAX
+ #include <windows.h>
+ #else
+-#include <sys/resource.h>
++#if !defined(__HAIKU__)
+ #include <sys/errno.h>
++#endif
++#include <sys/resource.h>
+ #include <unistd.h>
+ #endif
+ #include <climits>
+@@ -36,7 +38,7 @@
+ #include <cstdio>
+ #include <cstdlib>
+ #include <cstring>
+-#if defined(__CYGWIN__) || defined(_WIN32)
++#if defined(__CYGWIN__) || defined(_WIN32) || defined(__HAIKU__)
+ #include <sstream>
+ #include <cmath>
+ #define fmodl(lhs, rhs) std::fmod(lhs, rhs)
+@@ -60,6 +62,11 @@ static long double swift_strtold_l(const char *nptr,
+ #define strtod_l swift_strtod_l
+ #define strtof_l swift_strtof_l
+ #define strtold_l swift_strtold_l
++#if defined(__HAIKU__)
++#include <errno.h>
++#include <Errors.h>
++#endif
++#elif defined(__HAIKU__)
+ #else
+ #include <xlocale.h>
+ #endif
+@@ -142,7 +149,7 @@ static inline locale_t getCLocale() {
+   // as C locale.
+   return nullptr;
+ }
+-#elif defined(__CYGWIN__) || defined(_WIN32)
++#elif defined(__CYGWIN__) || defined(_WIN32) || defined(__HAIKU__)
+ // In Cygwin, getCLocale() is not used.
+ #else
+ static locale_t makeCLocale() {
+@@ -160,7 +167,7 @@ static locale_t getCLocale() {
+ 
+ #if defined(__APPLE__)
+ #define swift_snprintf_l snprintf_l
+-#elif defined(__CYGWIN__) || defined(_WIN32)
++#elif defined(__CYGWIN__) || defined(_WIN32) || defined(__HAIKU__)
+ // In Cygwin, swift_snprintf_l() is not used.
+ #else
+ static int swift_snprintf_l(char *Str, size_t StrSize, locale_t Locale,
+@@ -193,7 +200,7 @@ static uint64_t swift_floatingPointToString(char *Buffer, size_t BufferLength,
+     Precision = std::numeric_limits<T>::max_digits10;
+   }
+ 
+-#if defined(__CYGWIN__) || defined(_WIN32)
++#if defined(__CYGWIN__) || defined(_WIN32) || defined(__HAIKU__)
+   // Cygwin does not support uselocale(), but we can use the locale feature 
+   // in stringstream object.
+   std::ostringstream ValueStream;
+@@ -438,7 +445,7 @@ __mulodi4(di_int a, di_int b, int* overflow)
+ }
+ #endif
+ 
+-#if defined(__CYGWIN__) || defined(_WIN32)
++#if defined(__CYGWIN__) || defined(_WIN32) || defined(__HAIKU__)
+ // Cygwin does not support uselocale(), but we can use the locale feature 
+ // in stringstream object.
+ template <typename T>
+diff --git a/test/lit.cfg b/test/lit.cfg
+index 59a668797e..a9643fd889 100644
+--- a/test/lit.cfg
++++ b/test/lit.cfg
+@@ -727,8 +727,8 @@ if run_vendor == 'apple':
+         "%s clang++ %s" %
+         (xcrun_prefix, config.target_cc_options))
+ 
+-elif run_os in ['linux-gnu', 'linux-gnueabihf', 'freebsd', 'windows-cygnus', 'windows-gnu']:
+-    # Linux/FreeBSD/Cygwin
++elif run_os in ['linux-gnu', 'linux-gnueabihf', 'freebsd', 'windows-cygnus', 'windows-gnu', 'haiku']:
++    # Linux/FreeBSD/Cygwin/Haiku
+     if run_os == 'windows-cygnus':
+       lit_config.note("Testing Cygwin " + config.variant_triple)
+       config.target_object_format = "coff"
+@@ -744,6 +744,11 @@ elif run_os in ['linux-gnu', 'linux-gnueabihf', 'freebsd', 'windows-cygnus', 'wi
+       config.target_object_format = "elf"
+       config.target_dylib_extension = "so"
+       config.target_sdk_name = "freebsd"
++    elif run_os == 'haiku':
++      lit_config.note("Testing Haiku " + config.variant_triple)
++      config.target_object_format = "elf"
++      config.target_dylib_extension = "so"
++      config.target_sdk_name = "haiku"
+     else:
+       lit_config.note("Testing Linux " + config.variant_triple)
+       config.target_object_format = "elf"
+diff --git a/unittests/runtime/CMakeLists.txt b/unittests/runtime/CMakeLists.txt
+index 797bbf0a68..3a3ae67d1c 100644
+--- a/unittests/runtime/CMakeLists.txt
++++ b/unittests/runtime/CMakeLists.txt
+@@ -22,7 +22,7 @@ if(("${SWIFT_HOST_VARIANT_SDK}" STREQUAL "${SWIFT_PRIMARY_VARIANT_SDK}") AND
+       ${FOUNDATION_LIBRARY}
+       swiftStdlibUnittest${SWIFT_PRIMARY_VARIANT_SUFFIX}
+       )
+-  elseif(SWIFT_HOST_VARIANT STREQUAL "freebsd")
++  elseif(SWIFT_HOST_VARIANT STREQUAL "freebsd" OR SWIFT_HOST_VARIANT STREQUAL "haiku")
+     find_library(EXECINFO_LIBRARY execinfo)
+     list(APPEND PLATFORM_TARGET_LINK_LIBRARIES
+       ${EXECINFO_LIBRARY}
+diff --git a/unittests/runtime/LongTests/CMakeLists.txt b/unittests/runtime/LongTests/CMakeLists.txt
+index 54befa11b6..86203643c5 100644
+--- a/unittests/runtime/LongTests/CMakeLists.txt
++++ b/unittests/runtime/LongTests/CMakeLists.txt
+@@ -16,7 +16,7 @@ if(("${SWIFT_HOST_VARIANT_SDK}" STREQUAL "${SWIFT_PRIMARY_VARIANT_SDK}") AND
+ #      ${FOUNDATION_LIBRARY}
+ #      swiftStdlibUnittest${SWIFT_PRIMARY_VARIANT_SUFFIX}
+ #      )
+-  elseif(SWIFT_HOST_VARIANT STREQUAL "freebsd")
++  elseif(SWIFT_HOST_VARIANT STREQUAL "freebsd" OR SWIFT_HOST_VARIANT STREQUAL "haiku")
+     find_library(EXECINFO_LIBRARY execinfo)
+     list(APPEND PLATFORM_TARGET_LINK_LIBRARIES
+       ${EXECINFO_LIBRARY}
+diff --git a/unittests/runtime/Metadata.cpp b/unittests/runtime/Metadata.cpp
+index 0558db1ce4..88f4929a1a 100644
+--- a/unittests/runtime/Metadata.cpp
++++ b/unittests/runtime/Metadata.cpp
+@@ -22,6 +22,7 @@
+ #if !defined(_POSIX_BARRIERS) || _POSIX_BARRIERS < 0
+ // Implement pthread_barrier_* for platforms that don't implement them (Darwin)
+ 
++
+ #define PTHREAD_BARRIER_SERIAL_THREAD 1
+ struct pthread_barrier_t {
+   pthread_mutex_t mutex;
+diff --git a/utils/build-script-impl b/utils/build-script-impl
+index 3d7ba144c5..062498d23a 100755
+--- a/utils/build-script-impl
++++ b/utils/build-script-impl
+@@ -2496,18 +2496,26 @@ for host in "${ALL_HOSTS[@]}"; do
+                     call mkdir -p "${LIBDISPATCH_BUILD_DIR}"
+                     with_pushd "${LIBDISPATCH_SOURCE_DIR}" \
+                         call autoreconf -fvi
++					if [[ "$(uname -s)" == "Haiku" ]] ; then
++					with_pushd "${LIBDISPATCH_BUILD_DIR}" \
++                        call env CC="${LLVM_BIN}/clang" CXX="${LLVM_BIN}/clang++" SWIFTC="${SWIFTC_BIN}" \
++                            "${LIBDISPATCH_SOURCE_DIR}"/configure --with-swift-toolchain="${SWIFT_BUILD_PATH}" \
++                            --with-build-variant=$dispatch_build_variant_arg  --disable-build-tests \
++                            --enable-embedded-blocks-runtime=yes --prefix="$(get_host_install_destdir ${host})$(get_host_install_prefix ${host})"
++					else
+                     with_pushd "${LIBDISPATCH_BUILD_DIR}" \
+                         call env CC="${LLVM_BIN}/clang" CXX="${LLVM_BIN}/clang++" SWIFTC="${SWIFTC_BIN}" \
+                             "${LIBDISPATCH_SOURCE_DIR}"/configure --with-swift-toolchain="${SWIFT_BUILD_PATH}" \
+                             --with-build-variant=$dispatch_build_variant_arg \
+                             --prefix="$(get_host_install_destdir ${host})$(get_host_install_prefix ${host})"
++					fi
+                 else
+                     echo "Skipping reconfiguration of libdispatch"
+                 fi
+                 with_pushd "${LIBDISPATCH_BUILD_DIR}" \
+                     call make
+                 with_pushd "${LIBDISPATCH_BUILD_DIR}/tests" \
+-                    call make build-tests
++                    #call make build-tests
+ 
+                 # libdispatch builds itself and doesn't use cmake
+                 continue
+-- 
+2.11.0
+

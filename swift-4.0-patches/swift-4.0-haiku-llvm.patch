@@ -1,0 +1,106 @@
+From cadd5da194232287f87c1a0dcb35a0fa33db7677 Mon Sep 17 00:00:00 2001
+From: Calvin Hill <calvin@hakobaito.co.uk>
+Date: Tue, 15 Aug 2017 20:24:28 +0100
+Subject: [PATCH] llvm: Add Haiku triple and more compilation fixes
+
+---
+ cmake/modules/HandleLLVMOptions.cmake |  2 +-
+ include/llvm/ADT/Triple.h             |  4 ++++
+ lib/Support/Unix/Path.inc             |  5 ++++-
+ tools/llvm-config/llvm-config.cpp     | 21 ++++++++++++++++-----
+ 4 files changed, 25 insertions(+), 7 deletions(-)
+
+diff --git a/cmake/modules/HandleLLVMOptions.cmake b/cmake/modules/HandleLLVMOptions.cmake
+index 0676317acc6..42aac3798a6 100644
+--- a/cmake/modules/HandleLLVMOptions.cmake
++++ b/cmake/modules/HandleLLVMOptions.cmake
+@@ -680,7 +680,7 @@ add_definitions( -D__STDC_LIMIT_MACROS )
+ if (UNIX AND
+     CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND
+     CMAKE_GENERATOR STREQUAL "Ninja")
+-  append("-fcolor-diagnostics" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
++  append("-fdiagnostics-color=auto" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
+ endif()
+ 
+ # lld doesn't print colored diagnostics when invoked from Ninja
+diff --git a/include/llvm/ADT/Triple.h b/include/llvm/ADT/Triple.h
+index cd560658ca4..e24f43c90d3 100644
+--- a/include/llvm/ADT/Triple.h
++++ b/include/llvm/ADT/Triple.h
+@@ -507,6 +507,10 @@ class Triple {
+   bool isOSContiki() const {
+     return getOS() == Triple::Contiki;
+   }
++  
++  bool isOSHaiku() const {
++    return getOS() == Triple::Haiku;
++  }
+ 
+   /// Checks if the environment could be MSVC.
+   bool isWindowsMSVCEnvironment() const {
+diff --git a/lib/Support/Unix/Path.inc b/lib/Support/Unix/Path.inc
+index 45097eb918b..cf154e854f3 100644
+--- a/lib/Support/Unix/Path.inc
++++ b/lib/Support/Unix/Path.inc
+@@ -97,7 +97,7 @@
+ #define STATVFS_F_FRSIZE(vfs) static_cast<uint64_t>(vfs.f_bsize)
+ #endif
+ 
+-#if defined(__NetBSD__)
++#if defined(__NetBSD__) || defined(__HAIKU__) 
+ #define STATVFS_F_FLAG(vfs) (vfs).f_flag
+ #else
+ #define STATVFS_F_FLAG(vfs) (vfs).f_flags
+@@ -386,6 +386,9 @@ static bool is_local_impl(struct STATVFS &Vfs) {
+   StringRef fstype(Vfs.f_basetype);
+   // NFS is the only non-local fstype??
+   return !fstype.equals("nfs");
++#elif defined(__HAIKU__)
++  // Haiku doesn't support MNT_LOCAL so return false for now.
++  return false;
+ #else
+   return !!(STATVFS_F_FLAG(Vfs) & MNT_LOCAL);
+ #endif
+diff --git a/tools/llvm-config/llvm-config.cpp b/tools/llvm-config/llvm-config.cpp
+index 08b096afb05..739213cd4ab 100644
+--- a/tools/llvm-config/llvm-config.cpp
++++ b/tools/llvm-config/llvm-config.cpp
+@@ -332,11 +332,16 @@ int main(int argc, char **argv) {
+         ("-I" + ActiveIncludeDir + " " + "-I" + ActiveObjRoot + "/include");
+   } else {
+     ActivePrefix = CurrentExecPrefix;
++#ifdef __HAIKU__
++    ActiveIncludeDir = ActivePrefix + "/develop/headers";
++    ActiveLibDir = ActivePrefix + "/develop/lib" + LLVM_LIBDIR_SUFFIX;
++#else
+     ActiveIncludeDir = ActivePrefix + "/include";
++    ActiveLibDir = ActivePrefix + "/lib" + LLVM_LIBDIR_SUFFIX;
++#endif
+     SmallString<256> path(StringRef(LLVM_TOOLS_INSTALL_DIR));
+     sys::fs::make_absolute(ActivePrefix, path);
+     ActiveBinDir = path.str();
+-    ActiveLibDir = ActivePrefix + "/lib" + LLVM_LIBDIR_SUFFIX;
+     ActiveCMakeDir = ActiveLibDir + "/cmake/llvm";
+     ActiveIncludeOption = "-I" + ActiveIncludeDir;
+   }
+@@ -556,10 +561,16 @@ int main(int argc, char **argv) {
+         OS << (LLVM_HAS_GLOBAL_ISEL ? "ON" : "OFF") << '\n';
+       } else if (Arg == "--shared-mode") {
+         PrintSharedMode = true;
+-      } else if (Arg == "--obj-root") {
+-        OS << ActivePrefix << '\n';
+-      } else if (Arg == "--src-root") {
+-        OS << LLVM_SRC_ROOT << '\n';
++      } else if (Arg == "--obj-root" || Arg == "--src-root") {
++        if (IsInDevelopmentTree) {
++          if (Arg == "--obj-root")
++            OS << ActivePrefix << '\n';
++          else
++            OS << LLVM_SRC_ROOT << '\n';
++        } else {
++          llvm::errs() << "llvm-config: sources not installed\n";
++          exit(1);
++        }
+       } else if (Arg == "--ignore-libllvm") {
+         LinkDyLib = false;
+         LinkMode = BuiltSharedLibs ? LinkModeShared : LinkModeAuto;

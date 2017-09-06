@@ -18,8 +18,6 @@ _Please note that this is subject to frequent revisions and this information cou
 	* Haiku recipe for swift 3 is available at [HaikuPorts](https://github.com/haikuports/haikuports/pull/1383).
 * Incomplete:
 	* Some tests have been partially ported [WIP].
-		*
-		* 
 	* Enabling libdispatch to be built with the build-script.
 	* Building SourceKit for Haiku.
 
@@ -74,6 +72,8 @@ _Please note that this is subject to frequent revisions and this information cou
 	* libsqlite3 _(libsqlite-3.19.2.0-1)_
 	* libexecinfo _(libexecinfo-1.1.3)_
 	* libicu _(icu-57.1.2)_
+	* pkgconfig
+
 	
 ## Building with Haikuporter
 
@@ -97,7 +97,7 @@ This section should be useful to those who wish to develop or to continue fixing
 	
 1. Download the dependencies via `pkgman`.
 
-	`pkgman install llvm llvm_clang ninja cmake libedit_devel python icu_devel libexecinfo_devel sqlite3_devel gcc_syslibs_devel curl_devel git` 
+	`pkgman install llvm llvm_clang ninja cmake libedit_devel python icu_devel libexecinfo_devel sqlite3_devel gcc_syslibs_devel curl_devel git pkgconfig` 
 
 2. Create a folder to store the swift toolchain:
 
@@ -199,4 +199,4 @@ The test-suite by appending '-t' for normal tests run via the following command:
 This will test the toolchain and at the end will print the list of failed tests and 
 give you a XML representation of the detailed results.
 
-*(Last changed: August 29th 2017)*
+*(Last changed: September 6th 2017)*

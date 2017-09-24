@@ -10,7 +10,7 @@ _Please note that this is subject to frequent revisions and this information cou
 
 ### Swift
 * Completed:
-	* Patches have been sent for review. 
+	* Patches have been sent for review, and have been [upstreamed](https://github.com/apple/swift/commit/aee81d272f3147c0a9b610956e72a7c0772b8bcb) as of the 22nd of September.
 	* Compiler (swiftc) builds on Haiku and programs.
 	* Swift programs can be interpreted/compiled on Haiku.
 	* Standard library (stdlib) builds on Haiku. 
@@ -21,26 +21,28 @@ _Please note that this is subject to frequent revisions and this information cou
 	* Enabling libdispatch to be built with the build-script.
 	* Building SourceKit for Haiku.
 
-### Swift-corelibs-foundation
+### swift-corelibs-foundation
 * Completed:
 	* Initial support for Haiku is available.
 * Incomplete:
 	* Testing Foundation. 
 
-### Swift-corelibs-libdispatch
+### swift-corelibs-libdispatch
 * Completed:
 	* Initial support for Haiku is available.
 * Incomplete:
 	* Implementing Haiku-specific functionality. 
 	* Testing libdispatch.
 
-### Swift-cmark
+### swift-cmark
 
-* Builds without any patches needed.
+* Builds without any patches.
 
 ### swift-llbuild
 
-* Requires \<spawn.h\> functions to be implemented.  
+As of this commit in [hrev51418](http://cgit.haiku-os.org/haiku/commit/?id=ccd42320c45658052d620804bb8e05e5bc327706) posix_spawn() and the spawn.h development header is available in Haiku.
+
+* ~~Requires \<spawn.h\> functions to be implemented.~~
 
 ### swift-lldb
 
@@ -61,7 +63,7 @@ _Please note that this is subject to frequent revisions and this information cou
 		* 16GB+ of RAM bare metal (A VM install is too slow.)
 		* 30GB+ HDD space.
 
-* Software Requirements:
+* Minimum Software Requirements:
 	* LLVM / Clang _(llvm-4.0.1-2, llvm-clang-4.0.1-2)_
 	* libedit _(libedit\_2015\_03\_21\_3.1-6)_
 	* CMake _(cmake-3.8.2-1)_
@@ -70,9 +72,11 @@ _Please note that this is subject to frequent revisions and this information cou
 	* Python 2 _(python-2.7.13-3)_
 	* libxml2 _(libxml2-2.9.3-5)_
 	* libsqlite3 _(libsqlite-3.19.2.0-1)_
-	* libexecinfo _(libexecinfo-1.1.3)_
+	* libexecinfo _(libexecinfo-1.1.4)_
 	* libicu _(icu-57.1.2)_
-	* pkgconfig
+	* pkg-config
+
+Note that libexecinfo-1.1.3 has symlinking issues, and was fixed in this [commit](https://github.com/haikuports/haikuports/pull/1639). However, libexecinfo-1.1.**4** hasn't been updated over at HaikuDepot yet, so you might need to build and install this yourself via Haikuporter.
 
 	
 ## Building with Haikuporter
@@ -93,7 +97,7 @@ That's it!
 
 ## Building from source manually
 
-This section should be useful to those who wish to develop or to continue fixing stability issues in the swift port. These instructions assume you are running a recent x86_64 nightly. 32 bit Haiku is not supported.
+This section should be useful to those who wish to develop or to continue fixing stability issues in the swift port. These instructions assume you are running a recent x86_64 nightly. 32 bit Haiku is not supported yet.
 	
 1. Download the dependencies via `pkgman`.
 
@@ -108,7 +112,7 @@ This section should be useful to those who wish to develop or to continue fixing
 	 `git clone https://github.com/return/swift-haiku-build`
 
 4. Once this is done, the repository comes with three scripts and two folders containing patch files. 
-  *  `build-source.sh` - Clones the Swift 4 toolchain from apple/swift and applies platform patches for Haiku support.
+  *  `build-source.sh` - Clones the Swift 4 toolchain directly from apple/swift and applies additional platform patches for Haiku support.
   *  `build-source-3.1.sh` - Uses the Swift 3.1 port from my GSoC toolchain forks and builds the toolchain from source. 
   *  `build-script.sh` - The build script commands used to configure and build swift itself.
 
@@ -119,7 +123,7 @@ You can start the build process by just executing it:
 `sh ./build-source.sh`
 </center>
 
-**_This script is meant to be run on Haiku. Building it on other systems may also work, but could fail to compile (Especially the Swift 3.1 port)_**
+**_This script is meant to be run on Haiku. Building it on other systems may also work, but may fail to compile (Especially the Swift 3.1 port)_**
 
  Build the toolchain with this script below, depending if you want a Debug or Release version:
 
@@ -199,4 +203,4 @@ The test-suite by appending '-t' for normal tests run via the following command:
 This will test the toolchain and at the end will print the list of failed tests and 
 give you a XML representation of the detailed results.
 
-*(Last changed: September 6th 2017)*
+*(Last changed: September 24th 2017)*

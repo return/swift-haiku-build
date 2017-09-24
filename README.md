@@ -1,5 +1,7 @@
 # Swift on Haiku - Google Summer of Code Documentation
 
+*(Last changed: September 24th 2017)*
+
 This gist documents the progress made on porting Swift to Haiku and has detailed instructions on building the toolchain from source.
 
 Also, the sub-projects listed below show the progress of what has been completed so far in the Google Summer of Code (GSoC) period and their current statuses displayed below: _(Excludes swift-llvm and swift-clang)_
@@ -202,5 +204,3 @@ The test-suite by appending '-t' for normal tests run via the following command:
 
 This will test the toolchain and at the end will print the list of failed tests and 
 give you a XML representation of the detailed results.
-
-*(Last changed: September 24th 2017)*

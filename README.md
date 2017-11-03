@@ -1,6 +1,6 @@
 # Swift on Haiku - Google Summer of Code Documentation
 
-*(Last changed: September 24th 2017)*
+*(Last changed: November 3rd 2017)*
 
 This gist documents the progress made on porting Swift to Haiku and has detailed instructions on building the toolchain from source.
 
@@ -103,7 +103,7 @@ This section should be useful to those who wish to develop or to continue fixing
 	
 1. Download the dependencies via `pkgman`.
 
-	`pkgman install llvm llvm_clang ninja cmake libedit_devel python icu_devel libexecinfo_devel sqlite3_devel gcc_syslibs_devel curl_devel git pkgconfig` 
+	`pkgman install llvm llvm_clang ninja cmake libedit_devel python icu_devel libexecinfo_devel sqlite gcc_syslibs_devel curl_devel libuuid_devel git pkgconfig`
 
 2. Create a folder to store the swift toolchain:
 
@@ -181,7 +181,7 @@ _Patches for other repositories not included in the table should be branched out
 
 ### Patches for Swift 4 support:
 
-Patches related to improving Swift 4 on Haiku live on `swift-4-haiku-support`. It also serves at the branch for building the swift-4 recipe at HaikuPorts.  If you intend to improve the Swift 4 port for packaging at HaikuPorts, you should switch your branch to `swift-4-haiku-support` similar to the structure above. Or you can
+Patches related to improving Swift 4 on Haiku live on `swift-4-haiku-support`. It also serves at the branch for building the swift-4 recipe at HaikuPorts.  If you intend to improve the Swift 4 port for packaging at HaikuPorts, you should switch your branch to `swift-4-haiku-support` similar to the structure above.
 
 
 ### Patches for upstream Swift:

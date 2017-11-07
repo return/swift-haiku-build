@@ -9,7 +9,7 @@ args=$#
 patch_folder="swift-4.0-patches"
 
 # Swift 4 Tag
-tag="swift-DEVELOPMENT-SNAPSHOT-2017-08-21-a"
+tag="swift-4.1-DEVELOPMENT-SNAPSHOT-2017-11-04-a"
 
 set -e
 
@@ -59,20 +59,20 @@ fi
 #fi
 
 
-pushd swift
+cd swift
 git reset --hard
 git checkout $tag
 patch -p1 < ../$patch_folder/swift-4.0-haiku-swift.patch
-popd
-pushd llvm
+cd ..
+cd llvm
 git reset --hard
 git checkout $tag
 patch -p1 < ../$patch_folder/swift-4.0-haiku-llvm.patch
-popd
-pushd clang
+cd ..
+cd clang
 git reset --hard
 git checkout $tag
 patch -p1 < ../$patch_folder/swift-4.0-haiku-clang.patch
-popd
+cd ..
 
-sh ./build-script.sh
+build-script.sh

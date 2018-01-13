@@ -6,10 +6,10 @@ version=$1
 
 args=$#
 
-patch_folder="swift-upstream"
+patch_folder="swift-4.0-patches"
 
-# Latest Swift Tag
-tag="swift-DEVELOPMENT-SNAPSHOT-2018-01-12-a"
+# Swift 4 Tag
+tag="swift-4.1-DEVELOPMENT-SNAPSHOT-2017-12-25-a"
 
 set -e
 
@@ -51,26 +51,28 @@ else
 fi
 
 # Test if the compiler-rt directory exists
-if [ -d "./compiler-rt" ]; then
-  echo "The compiler-rt directory already exists, not cloning"
-else
-  git clone https://github.com/apple/swift-compiler-rt -b $tag --depth=1 compiler-rt
-fi
+# Disable compiler-rt for now
+#if [ -d "./compiler-rt" ]; then
+#  echo "The compiler-rt directory already exists, not cloning"
+#else
+#  git clone https://github.com/apple/swift-compiler-rt -b $tag --depth=1 compiler-rt
+#fi
+
 
 cd swift
 git reset --hard
 git checkout $tag
-patch -p1 < ../$patch_folder/swift-haiku-swift.patch
+patch -p1 < ../$patch_folder/swift-4.0-haiku-swift.patch
 cd ..
 cd llvm
 git reset --hard
 git checkout $tag
-patch -p1 < ../$patch_folder/swift-haiku-llvm.patch
+patch -p1 < ../$patch_folder/swift-4.0-haiku-llvm.patch
 cd ..
 cd clang
 git reset --hard
 git checkout $tag
-patch -p1 < ../$patch_folder/swift-haiku-clang.patch
+patch -p1 < ../$patch_folder/swift-4.0-haiku-clang.patch
 cd ..
 
 build-script.sh

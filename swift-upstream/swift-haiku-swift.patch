@@ -1,0 +1,68 @@
+From 5beaf79263cb853dfd6184e5d5e14243411cf583 Mon Sep 17 00:00:00 2001
+From: Calvin Hill <calvin@hakobaito.co.uk>
+Date: Thu, 11 Jan 2018 11:18:02 +0000
+Subject: [PATCH] swift: Update Haiku supporting patches and fix swift build in
+ LibcShims
+
+---
+ stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb         | 2 +-
+ stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift         | 2 +-
+ stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift | 2 +-
+ stdlib/public/SwiftShims/LibcShims.h                           | 2 ++
+ 4 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb b/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
+index f4a028f..90a2e26 100644
+--- a/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
++++ b/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
+@@ -737,7 +737,7 @@ struct _ParentProcess {
+       var ret: CInt
+       repeat {
+         ret = _stdlib_select(&readfds, &writefds, &errorfds, nil)
+-      } while ret == -1  &&  errno == EINTR
++      } while ret == -1  &&  errno == 10
+       if ret <= 0 {
+         fatalError("select() returned an error")
+       }
+diff --git a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
+index b4554bc..9233045 100644
+--- a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
++++ b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
+@@ -278,7 +278,7 @@ public func posixWaitpid(_ pid: pid_t) -> ProcessTerminationStatus {
+   }
+ #else
+   while waitpid(pid, &status, 0) < 0 {
+-    if errno != EINTR {
++    if errno != 10 {
+       preconditionFailure("waitpid() failed")
+     }
+   }
+diff --git a/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift b/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
+index cea41ab..7995638 100644
+--- a/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
++++ b/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
+@@ -69,7 +69,7 @@ public func _stdlib_pthread_barrier_init(
+ ) -> CInt {
+   barrier.pointee = _stdlib_pthread_barrier_t()
+   if count == 0 {
+-    errno = EINVAL
++    errno = 11
+     return -1
+   }
+   barrier.pointee.mutex = UnsafeMutablePointer.allocate(capacity: 1)
+diff --git a/stdlib/public/SwiftShims/LibcShims.h b/stdlib/public/SwiftShims/LibcShims.h
+index ccc25a9..eca29d2 100644
+--- a/stdlib/public/SwiftShims/LibcShims.h
++++ b/stdlib/public/SwiftShims/LibcShims.h
+@@ -55,6 +55,8 @@ typedef __swift_uint32_t __swift_mode_t;
+ typedef __swift_uint16_t __swift_mode_t;
+ #elif defined(_WIN32)
+ typedef __swift_int32_t __swift_mode_t;
++#elif defined(__HAIKU__)
++typedef __swift_uint32_t __swift_mode_t;
+ #else  // just guessing
+ typedef __swift_uint16_t __swift_mode_t;
+ #endif
+-- 
+2.15.0
+

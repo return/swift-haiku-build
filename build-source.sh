@@ -9,7 +9,7 @@ args=$#
 patch_folder="swift-upstream"
 
 # Latest Swift Tag
-tag="swift-DEVELOPMENT-SNAPSHOT-2018-01-12-a"
+tag="swift-DEVELOPMENT-SNAPSHOT-2018-01-26-a"
 
 set -e
 
@@ -61,6 +61,7 @@ cd swift
 git reset --hard
 git checkout $tag
 patch -p1 < ../$patch_folder/swift-haiku-swift.patch
+patch -p1 < ../$patch_folder/swift-metadata-cache-fix.patch
 cd ..
 cd llvm
 git reset --hard

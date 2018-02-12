@@ -10,13 +10,13 @@ extra_args_stable=""
 patch_folder="swift-upstream"
 
 # Latest working swift tag.
-tag="swift-DEVELOPMENT-SNAPSHOT-2018-01-26-a"
+tag="swift-DEVELOPMENT-SNAPSHOT-2018-02-08-a"
 
 # Determine the clone depth from user input.
 case $clone_option in
   shallow)
      extra_args="-b $tag --depth=1"
-     extra_args_stable = extra_args;;
+     extra_args_stable="$tag --depth=1";;
   full)
      tag="master"
      extra_args="-b $tag"
@@ -110,13 +110,20 @@ patch -p1 < ../$patch_folder/swift-metadata-cache-fix.patch
 cd ..
 cd llvm
 git reset --hard
-git checkout stable
+if [[ $1 == update ]]; then
+	git checkout stable
+else
+	git checkout $tag
+fi
 patch -p1 < ../$patch_folder/swift-haiku-llvm.patch
 cd ..
 cd clang
 git reset --hard
-git checkout stable
+if [[ $1 == update ]]; then
+	git checkout stable
+else
+	git checkout $tag
+fi
 patch -p1 < ../$patch_folder/swift-haiku-clang.patch
 cd ..
-
-build-script.sh
+./build-script.sh

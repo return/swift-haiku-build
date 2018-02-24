@@ -1,6 +1,6 @@
 # Swift on Haiku - Google Summer of Code Documentation
 
-*(Last changed: November 5th 2017)*
+*(Last changed: Feburary 24th 2018)*
 
 This gist documents the progress made on porting Swift to Haiku and has detailed instructions on building the toolchain from source.
 
@@ -71,7 +71,7 @@ As of this commit in [hrev51418](http://cgit.haiku-os.org/haiku/commit/?id=ccd42
 	* CMake _(cmake-3.8.2-1)_
 	* Ninja _(ninja-1.6.0-1)_
 	* libuuid _(libuuid-1.0.3-4)_
-	* Python 2 _(python-2.7.13-3)_
+	* Python 3 _(python3-3.6.3-3)_
 	* libxml2 _(libxml2-2.9.3-5)_
 	* libsqlite3 _(libsqlite-3.19.2.0-1)_
 	* libexecinfo _(libexecinfo-1.1.4)_
@@ -101,7 +101,7 @@ This section should be useful to those who wish to develop or to continue fixing
 	
 1. Download the dependencies via `pkgman`.
 
-	`pkgman install llvm llvm_clang ninja cmake libedit_devel python icu_devel libiconv_devel libexecinfo_devel sqlite gcc_syslibs_devel curl_devel libuuid_devel git pkgconfig`
+	`pkgman install llvm llvm_clang ninja cmake libedit_devel python3 icu_devel libiconv_devel libexecinfo_devel sqlite gcc_syslibs_devel curl_devel libuuid_devel git pkgconfig`
 
 2. Create a folder to store the swift toolchain:
 

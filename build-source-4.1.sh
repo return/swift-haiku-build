@@ -7,10 +7,10 @@ extra_args=""
 # Specific to LLVM libraries
 extra_args_stable=""
 
-patch_folder="swift-upstream"
+patch_folder="swift-4.1-patches"
 
 # Latest working swift tag.
-tag="swift-DEVELOPMENT-SNAPSHOT-2018-04-05-a"
+tag="swift-4.1-RELEASE"
 
 # Determine the clone depth from user input.
 case $clone_option in

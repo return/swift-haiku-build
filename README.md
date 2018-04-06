@@ -1,6 +1,6 @@
 # Swift on Haiku - Google Summer of Code Documentation
 
-*(Last changed: Feburary 24th 2018)*
+*(Last changed: 6th April 2018)*
 
 This gist documents the progress made on porting Swift to Haiku and has detailed instructions on building the toolchain from source.
 
@@ -12,7 +12,7 @@ _Please note that this is subject to frequent revisions and this information cou
 
 ### Swift
 * Completed:
-	* Patches have been sent for review, and have been [upstreamed](https://github.com/apple/swift/commit/aee81d272f3147c0a9b610956e72a7c0772b8bcb) as of the 22nd of September.
+	* Patches have been sent for review, and have been [upstreamed](https://github.com/apple/swift/commit/aee81d272f3147c0a9b610956e72a7c0772b8bcb) as of the 22nd of September 2017.
 	* Compiler (swiftc) builds on Haiku and programs.
 	* Swift programs can be interpreted/compiled on Haiku.
 	* Standard library (stdlib) builds on Haiku. 
@@ -54,6 +54,12 @@ As of this commit in [hrev51418](http://cgit.haiku-os.org/haiku/commit/?id=ccd42
 * Requires Foundation / libdispatch and swift-llbuild.
 
 # Building Swift on Haiku
+
+**3 Step TLDR:**
+
+**1. Install dependencies via pkgman in Building from source manually**
+**2. git clone https://github.com/return/swift-haiku-build**
+**3. ./build-source.sh shallow**
 
 * System Requirements:
 	* Haiku 64 bit on hrev51281 or later running bare-metal or in a VirtualBox install 
@@ -101,7 +107,7 @@ This section should be useful to those who wish to develop or to continue fixing
 	
 1. Download the dependencies via `pkgman`.
 
-	`pkgman install llvm llvm_clang ninja cmake libedit_devel python3 icu_devel libiconv_devel libexecinfo_devel sqlite gcc_syslibs_devel curl_devel libuuid_devel git pkgconfig`
+	`pkgman install llvm llvm_libs llvm_clang ninja cmake libedit_devel python3 icu icu_devel libiconv_devel libexecinfo_devel sqlite gcc_syslibs_devel curl_devel libuuid_devel git pkgconfig`
 
 2. Create a folder to store the swift toolchain:
 
@@ -111,19 +117,30 @@ This section should be useful to those who wish to develop or to continue fixing
 
 	 `git clone https://github.com/return/swift-haiku-build`
 
-4. Once this is done, the repository comes with three scripts and two folders containing patch files. 
-  *  `build-source.sh` - Clones the Swift 4 toolchain directly from apple/swift and applies additional platform patches for Haiku support.
-  *  `build-source-3.1.sh` - Uses the Swift 3.1 port from my GSoC toolchain forks and builds the toolchain from source. 
+### Using the build scripts.
+
+You will find that the repository includes version-specific build scripts and patch files in their respective folders. Below is a short description of what they do:
+
+  *  `build-source.sh` - Points to the master branch and compiles the toolchain from source using the swift-upstream patches for Haiku support.
+  *  `build-source-X.Y.sh` - Same as the build-source script but is version-specific and uses version-specific patches for Haiku specific changes. In this case `build-source-3.0.sh` compiles for Swift 3.
   *  `build-script.sh` - The build script commands used to configure and build swift itself.
 
-You can start the build process by just executing it:
+### Build script options
 
+Whenever a new release or a new tag is out, it is possible to update the port by updating all the repositories and applying the patches automatically. Unless you are using the version-specific scripts 'build-source-X.Y.sh', you just update the tag from the releases page at [apple/swift](https://github.com/apple/swift/tags) and replace it with the newest tag name, usually '*swift-DEVELOPMENT-SNAPSHOT-YYYY-MM-DD-a*' in build-source.sh.
+
+Then you run either:
+	* `sh ./build-source.sh shallow` - Which performs a shallow clone of the toolchain from the specified tag. Useful if you don't have a fast network connection nor you want to clone the entire commit history or perhaps saves you some disk space.
+	* `sh ./build-source.sh full` - Performs a deep clone of the toolchain, with the entire commit history.
+	* `sh ./build-source.sh update` - Makes it possible to pull all the newer commits prior to cloning from master. But this will reset any file modifications to prevent conflicts with edited files from HEAD.
+
+You can start the build process by just executing the following commands, with the type of clone depth either **shallow** or **full**, excluding the {} or | characters:
 
 <center>
-`sh ./build-source.sh`
+`sh ./build-source.sh {shallow|full}`
 </center>
 
-**_This script is meant to be run on Haiku. Building it on other systems may also work, but may fail to compile (Especially the Swift 3.1 port)_**
+**_This script is meant to be run on Haiku. Executing the script on other systems may also work, but might still fail to compile (Especially the Swift 3.1 port)_**
 
  Build the toolchain with this script below, depending if you want a Debug or Release version:
 
@@ -164,8 +181,6 @@ Each repository has the available branches which are as follows:
 
 * swift-4-haiku-support-upstream (Deals with upstream Swift.)
 
-* swift-4-haiku-support-upstream-1 (Temporary branch which will be removed once merged.)
-
 ### Patches for Swift 3.1 support:
 
 Patches related to improving Swift 3.1 for Haiku live on `swift-3.1-haiku`. This branch is also used for building the swift-3.1 recipe at HaikuPorts. If you intend to improve version 3.1 You should switch your branch to `swift-3.1-haiku` like the following structure below:
@@ -201,4 +216,4 @@ The test-suite by appending '-t' for normal tests run via the following command:
 `./swift/utils/build-script -R -t ...`
 
 This will test the toolchain and at the end will print the list of failed tests and 
-give you a XML representation of the detailed results.
+give you a XML representation of the test results.

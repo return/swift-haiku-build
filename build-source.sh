@@ -10,7 +10,7 @@ extra_args_stable=""
 patch_folder="swift-upstream"
 
 # Latest working swift tag.
-tag="swift-DEVELOPMENT-SNAPSHOT-2018-04-05-a"
+tag="swift-DEVELOPMENT-SNAPSHOT-2018-04-12-a"
 
 # Determine the clone depth from user input.
 case $clone_option in

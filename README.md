@@ -58,7 +58,9 @@ As of this commit in [hrev51418](http://cgit.haiku-os.org/haiku/commit/?id=ccd42
 **3 Step TLDR:**
 
 **1. Install dependencies via pkgman in Building from source manually**
+
 **2. git clone https://github.com/return/swift-haiku-build**
+
 **3. ./build-source.sh shallow**
 
 * System Requirements:

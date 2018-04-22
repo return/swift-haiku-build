@@ -1,12 +1,12 @@
-From 177ac4a8923fbc9e0fb8c50d15a5e04d2fc460ef Mon Sep 17 00:00:00 2001
+From ca9a658678ab47b934ef8170ebc7e3ec16261dc4 Mon Sep 17 00:00:00 2001
 From: Calvin Hill <calvin@hakobaito.co.uk>
-Date: Thu, 5 Apr 2018 12:22:34 +0100
-Subject: [PATCH] swift-haiku: Added more various fixes in actually getting the
- compiler to work again.
+Date: Sun, 22 Apr 2018 02:24:50 +0100
+Subject: [PATCH] swift-haiku: Update patches for StdlibUnittest.swift change
+ with newest snapshot
 
 ---
  cmake/modules/AddSwift.cmake                       |  4 +--
- .../StdlibUnittest/StdlibUnittest.swift.gyb        |  2 +-
+ stdlib/private/StdlibUnittest/StdlibUnittest.swift |  2 +-
  .../SwiftPrivateLibcExtras/Subprocess.swift        |  2 +-
  .../PthreadBarriers.swift                          |  2 +-
  stdlib/public/Platform/CMakeLists.txt              |  8 ++---
@@ -16,7 +16,7 @@ Subject: [PATCH] swift-haiku: Added more various fixes in actually getting the
  8 files changed, 35 insertions(+), 28 deletions(-)
 
 diff --git a/cmake/modules/AddSwift.cmake b/cmake/modules/AddSwift.cmake
-index bbcd668160..43c05d64ea 100644
+index 243ed27..7633993 100644
 --- a/cmake/modules/AddSwift.cmake
 +++ b/cmake/modules/AddSwift.cmake
 @@ -438,7 +438,7 @@ function(_add_variant_link_flags)
@@ -28,7 +28,7 @@ index bbcd668160..43c05d64ea 100644
      endif()
    endif()
  
-@@ -1568,7 +1568,7 @@ function(add_swift_library name)
+@@ -1649,7 +1649,7 @@ function(add_swift_library name)
                   "${SWIFT_${sdk}_${arch}_ICU_UC}")
              # temporary fix for atomic needing to be
              # after object files for libswiftCore.so
@@ -37,11 +37,11 @@ index bbcd668160..43c05d64ea 100644
                list(APPEND swiftlib_private_link_libraries_targets
                     "-latomic")
              # the same issue on FreeBSD, missing symbols:
-diff --git a/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb b/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
-index 98ac5af041..ff635a9084 100644
---- a/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
-+++ b/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
-@@ -739,7 +739,7 @@ struct _ParentProcess {
+diff --git a/stdlib/private/StdlibUnittest/StdlibUnittest.swift b/stdlib/private/StdlibUnittest/StdlibUnittest.swift
+index 60dded4..3261a91 100644
+--- a/stdlib/private/StdlibUnittest/StdlibUnittest.swift
++++ b/stdlib/private/StdlibUnittest/StdlibUnittest.swift
+@@ -1030,7 +1030,7 @@ struct _ParentProcess {
        var ret: CInt
        repeat {
          ret = _stdlib_select(&readfds, &writefds, &errorfds, nil)
@@ -51,7 +51,7 @@ index 98ac5af041..ff635a9084 100644
          fatalError("select() returned an error")
        }
 diff --git a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
-index a516fe7d12..7c2fba3202 100644
+index a516fe7..7c2fba3 100644
 --- a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
 +++ b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
 @@ -278,7 +278,7 @@ public func posixWaitpid(_ pid: pid_t) -> ProcessTerminationStatus {
@@ -64,7 +64,7 @@ index a516fe7d12..7c2fba3202 100644
      }
    }
 diff --git a/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift b/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
-index 6136bb951b..9339b904c4 100644
+index 6136bb9..9339b90 100644
 --- a/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
 +++ b/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
 @@ -69,7 +69,7 @@ public func _stdlib_pthread_barrier_init(
@@ -77,7 +77,7 @@ index 6136bb951b..9339b904c4 100644
    }
    barrier.pointee.mutex = UnsafeMutablePointer.allocate(capacity: 1)
 diff --git a/stdlib/public/Platform/CMakeLists.txt b/stdlib/public/Platform/CMakeLists.txt
-index 14560c6bf9..480a4e9a9c 100644
+index 14560c6..480a4e9 100644
 --- a/stdlib/public/Platform/CMakeLists.txt
 +++ b/stdlib/public/Platform/CMakeLists.txt
 @@ -63,10 +63,10 @@ foreach(sdk ${SWIFT_SDKS})
@@ -96,7 +96,7 @@ index 14560c6bf9..480a4e9a9c 100644
        set(GLIBC_INCLUDE_PATH "${SWIFT_SDK_${sdk}_ARCH_${arch}_PATH}${GLIBC_INCLUDE_PATH}")
        set(GLIBC_ARCH_INCLUDE_PATH "${SWIFT_SDK_${sdk}_ARCH_${arch}_PATH}${GLIBC_ARCH_INCLUDE_PATH}")
 diff --git a/stdlib/public/SwiftShims/LibcShims.h b/stdlib/public/SwiftShims/LibcShims.h
-index 5f6e995a82..3b90829d30 100644
+index 5f6e995..3b90829 100644
 --- a/stdlib/public/SwiftShims/LibcShims.h
 +++ b/stdlib/public/SwiftShims/LibcShims.h
 @@ -59,6 +59,8 @@ typedef __swift_uint32_t __swift_mode_t;
@@ -118,7 +118,7 @@ index 5f6e995a82..3b90829d30 100644
  double lgamma_r(double x, int *psigngam);
  long double lgammal_r(long double x, int *psigngam);
 diff --git a/stdlib/public/core/CTypes.swift b/stdlib/public/core/CTypes.swift
-index 29da7eeb69..a400015366 100644
+index 12d1640..d5683b9 100644
 --- a/stdlib/public/core/CTypes.swift
 +++ b/stdlib/public/core/CTypes.swift
 @@ -74,6 +74,7 @@ public typealias CLongDouble = Double
@@ -130,7 +130,7 @@ index 29da7eeb69..a400015366 100644
  // TODO: Fill in definitions for additional architectures as needed. IIRC
  // armv7 should map to Double, but arm64 and ppc64le should map to Float128,
 diff --git a/stdlib/public/runtime/MetadataCache.h b/stdlib/public/runtime/MetadataCache.h
-index 8222d05890..5ae29e3a08 100644
+index 8222d05..5ae29e3 100644
 --- a/stdlib/public/runtime/MetadataCache.h
 +++ b/stdlib/public/runtime/MetadataCache.h
 @@ -275,6 +275,7 @@ public:
@@ -230,5 +230,5 @@ index 8222d05890..5ae29e3a08 100644
      // Diagnose unbreakable dependency cycles.
      //
 -- 
-2.16.2
+2.15.0
 

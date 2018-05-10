@@ -1,0 +1,138 @@
+From 097629196caf5360ddd17f3af470052c6c86d00a Mon Sep 17 00:00:00 2001
+From: Calvin Hill <calvin@hakobaito.co.uk>
+Date: Fri, 13 Apr 2018 03:37:40 +0100
+Subject: [PATCH] swift-4.1: Add Haiku-specific patches for swift-4.1 release
+
+---
+ cmake/modules/AddSwift.cmake                              |  4 ++--
+ stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb    |  2 +-
+ stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift    |  2 +-
+ .../SwiftPrivatePthreadExtras/PthreadBarriers.swift       |  2 +-
+ stdlib/public/SwiftShims/LibcShims.h                      |  2 ++
+ stdlib/public/runtime/MetadataCache.h                     | 15 ++++++++++-----
+ 6 files changed, 17 insertions(+), 10 deletions(-)
+
+diff --git a/cmake/modules/AddSwift.cmake b/cmake/modules/AddSwift.cmake
+index c55badb..d7c3f6b 100644
+--- a/cmake/modules/AddSwift.cmake
++++ b/cmake/modules/AddSwift.cmake
+@@ -394,7 +394,7 @@ function(_add_variant_link_flags)
+   if(NOT SWIFT_COMPILER_IS_MSVC_LIKE)
+     if(SWIFT_ENABLE_GOLD_LINKER AND
+        "${SWIFT_SDK_${LFLAGS_SDK}_OBJECT_FORMAT}" STREQUAL "ELF")
+-      list(APPEND result "-fuse-ld=gold")
++      list(APPEND result "-use-ld=ld")
+     endif()
+     if(SWIFT_ENABLE_LLD_LINKER OR
+        ("${LFLAGS_SDK}" STREQUAL "WINDOWS" AND
+@@ -1521,7 +1521,7 @@ function(add_swift_library name)
+                  "${SWIFT_${sdk}_ICU_UC}")
+             # temporary fix for atomic needing to be
+             # after object files for libswiftCore.so
+-            if("${sdk}" STREQUAL "ANDROID")
++            if("${sdk}" STREQUAL "ANDROID" OR "${sdk}" STREQUAL "HAIKU")
+               list(APPEND swiftlib_private_link_libraries_targets
+                    "-latomic")
+             # the same issue on FreeBSD, missing symbols:
+diff --git a/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb b/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
+index f4a028f..90a2e26 100644
+--- a/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
++++ b/stdlib/private/StdlibUnittest/StdlibUnittest.swift.gyb
+@@ -737,7 +737,7 @@ struct _ParentProcess {
+       var ret: CInt
+       repeat {
+         ret = _stdlib_select(&readfds, &writefds, &errorfds, nil)
+-      } while ret == -1  &&  errno == EINTR
++      } while ret == -1  &&  errno == 10
+       if ret <= 0 {
+         fatalError("select() returned an error")
+       }
+diff --git a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
+index b4554bc..9233045 100644
+--- a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
++++ b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
+@@ -278,7 +278,7 @@ public func posixWaitpid(_ pid: pid_t) -> ProcessTerminationStatus {
+   }
+ #else
+   while waitpid(pid, &status, 0) < 0 {
+-    if errno != EINTR {
++    if errno != 10 {
+       preconditionFailure("waitpid() failed")
+     }
+   }
+diff --git a/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift b/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
+index cea41ab..7995638 100644
+--- a/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
++++ b/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
+@@ -69,7 +69,7 @@ public func _stdlib_pthread_barrier_init(
+ ) -> CInt {
+   barrier.pointee = _stdlib_pthread_barrier_t()
+   if count == 0 {
+-    errno = EINVAL
++    errno = 11
+     return -1
+   }
+   barrier.pointee.mutex = UnsafeMutablePointer.allocate(capacity: 1)
+diff --git a/stdlib/public/SwiftShims/LibcShims.h b/stdlib/public/SwiftShims/LibcShims.h
+index ccc25a9..eca29d2 100644
+--- a/stdlib/public/SwiftShims/LibcShims.h
++++ b/stdlib/public/SwiftShims/LibcShims.h
+@@ -55,6 +55,8 @@ typedef __swift_uint32_t __swift_mode_t;
+ typedef __swift_uint16_t __swift_mode_t;
+ #elif defined(_WIN32)
+ typedef __swift_int32_t __swift_mode_t;
++#elif defined(__HAIKU__)
++typedef __swift_uint32_t __swift_mode_t;
+ #else  // just guessing
+ typedef __swift_uint16_t __swift_mode_t;
+ #endif
+diff --git a/stdlib/public/runtime/MetadataCache.h b/stdlib/public/runtime/MetadataCache.h
+index cfb8a91..d69fbc6 100644
+--- a/stdlib/public/runtime/MetadataCache.h
++++ b/stdlib/public/runtime/MetadataCache.h
+@@ -305,6 +305,11 @@ public:
+ 
+     // If we didn't insert the entry, then we just need to get the
+     // initialized value from the entry.
++    // TODO: Haiku crashes in this section of code due to the locking issues 
++    // Until this is fixed this serves as a very nasty hack, to get it running, 
++    // but will fail the MetadataCache concurrency tests.
++    /*
++
+     if (!insertResult.second) {
+ 
+       // If the entry is already initialized, great.
+@@ -316,7 +321,7 @@ public:
+       // Otherwise, we have to grab the lock and wait for the value to
+       // appear there.  Note that we have to check again immediately
+       // after acquiring the lock to prevent a race.
+-      auto concurrency = Concurrency.get();
++            auto concurrency = Concurrency.get();
+       concurrency->Lock.withLockOrWait(concurrency->Queue, [&, this] {
+         if ((value = entry->getValue())) {
+           return true; // found a value, done waiting
+@@ -337,7 +342,7 @@ public:
+ 
+       return value;
+     }
+-
++*/
+     // Otherwise, we created the entry and are responsible for
+     // creating the metadata.
+     auto value = builder();
+@@ -348,9 +353,9 @@ public:
+ #endif
+ 
+     // Acquire the lock, set the value, and notify any waiters.
+-    auto concurrency = Concurrency.get();
+-    concurrency->Lock.withLockThenNotifyAll(
+-        concurrency->Queue, [&entry, &value] { entry->setValue(value); });
++    // auto concurrency = Concurrency.get();
++    // concurrency->Lock.withLockThenNotifyAll(
++    //     concurrency->Queue, [&entry, &value] { entry->setValue(value); });
+ 
+     return value;
+   }
+-- 
+2.16.2
+

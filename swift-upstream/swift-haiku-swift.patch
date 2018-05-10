@@ -1,25 +1,24 @@
-From ca9a658678ab47b934ef8170ebc7e3ec16261dc4 Mon Sep 17 00:00:00 2001
+From 48976fb4964ee37b5f3665b1b7e26df4d1640d5a Mon Sep 17 00:00:00 2001
 From: Calvin Hill <calvin@hakobaito.co.uk>
-Date: Sun, 22 Apr 2018 02:24:50 +0100
-Subject: [PATCH] swift-haiku: Update patches for StdlibUnittest.swift change
- with newest snapshot
+Date: Wed, 9 May 2018 19:08:21 +0100
+Subject: [PATCH] swift-haiku: Update patches for upstream swift.
 
 ---
  cmake/modules/AddSwift.cmake                       |  4 +--
  stdlib/private/StdlibUnittest/StdlibUnittest.swift |  2 +-
  .../SwiftPrivateLibcExtras/Subprocess.swift        |  2 +-
  .../PthreadBarriers.swift                          |  2 +-
- stdlib/public/Platform/CMakeLists.txt              |  8 ++---
+ stdlib/public/Platform/CMakeLists.txt              |  6 ++--
  stdlib/public/SwiftShims/LibcShims.h               |  4 ++-
  stdlib/public/core/CTypes.swift                    |  1 +
  stdlib/public/runtime/MetadataCache.h              | 40 ++++++++++++----------
- 8 files changed, 35 insertions(+), 28 deletions(-)
+ 8 files changed, 35 insertions(+), 26 deletions(-)
 
 diff --git a/cmake/modules/AddSwift.cmake b/cmake/modules/AddSwift.cmake
-index 243ed27..7633993 100644
+index c1c90dd..037d6a8 100644
 --- a/cmake/modules/AddSwift.cmake
 +++ b/cmake/modules/AddSwift.cmake
-@@ -438,7 +438,7 @@ function(_add_variant_link_flags)
+@@ -448,7 +448,7 @@ function(_add_variant_link_flags)
        list(APPEND result "-fuse-ld=lld")
      elseif(SWIFT_ENABLE_GOLD_LINKER AND
         "${SWIFT_SDK_${LFLAGS_SDK}_OBJECT_FORMAT}" STREQUAL "ELF")
@@ -28,7 +27,7 @@ index 243ed27..7633993 100644
      endif()
    endif()
  
-@@ -1649,7 +1649,7 @@ function(add_swift_library name)
+@@ -1659,7 +1659,7 @@ function(add_swift_library name)
                   "${SWIFT_${sdk}_${arch}_ICU_UC}")
              # temporary fix for atomic needing to be
              # after object files for libswiftCore.so
@@ -38,7 +37,7 @@ index 243ed27..7633993 100644
                     "-latomic")
              # the same issue on FreeBSD, missing symbols:
 diff --git a/stdlib/private/StdlibUnittest/StdlibUnittest.swift b/stdlib/private/StdlibUnittest/StdlibUnittest.swift
-index 60dded4..3261a91 100644
+index 3c3239e..4829443 100644
 --- a/stdlib/private/StdlibUnittest/StdlibUnittest.swift
 +++ b/stdlib/private/StdlibUnittest/StdlibUnittest.swift
 @@ -1030,7 +1030,7 @@ struct _ParentProcess {
@@ -77,24 +76,22 @@ index 6136bb9..9339b90 100644
    }
    barrier.pointee.mutex = UnsafeMutablePointer.allocate(capacity: 1)
 diff --git a/stdlib/public/Platform/CMakeLists.txt b/stdlib/public/Platform/CMakeLists.txt
-index 14560c6..480a4e9 100644
+index 92345b9..caaf81d 100644
 --- a/stdlib/public/Platform/CMakeLists.txt
 +++ b/stdlib/public/Platform/CMakeLists.txt
-@@ -63,10 +63,10 @@ foreach(sdk ${SWIFT_SDKS})
-     if((${sdk} STREQUAL "LINUX" OR ${sdk} STREQUAL "FREEBSD") AND CMAKE_LIBRARY_ARCHITECTURE)
+@@ -67,8 +67,10 @@ foreach(sdk ${SWIFT_SDKS})
        set(GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH}/${CMAKE_LIBRARY_ARCHITECTURE}")
      endif()
--
+ 
 -    set(GLIBC_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH}")
 -    set(GLIBC_ARCH_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH}")
--
-+	if(NOT "${sdk}" STREQUAL "HAIKU")
-+    	set(GLIBC_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH}")
-+    	set(GLIBC_ARCH_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH}")
-+	endif()
-     if(NOT "${SWIFT_SDK_${sdk}_ARCH_${arch}_PATH}" STREQUAL "/")
++    if(NOT "${sdk}" STREQUAL "HAIKU")
++        set(GLIBC_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH}")
++        set(GLIBC_ARCH_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH}")
++    endif()
+ 
+     if(NOT "${SWIFT_SDK_${sdk}_ARCH_${arch}_PATH}" STREQUAL "/" AND NOT "${sdk}" STREQUAL "ANDROID")
        set(GLIBC_INCLUDE_PATH "${SWIFT_SDK_${sdk}_ARCH_${arch}_PATH}${GLIBC_INCLUDE_PATH}")
-       set(GLIBC_ARCH_INCLUDE_PATH "${SWIFT_SDK_${sdk}_ARCH_${arch}_PATH}${GLIBC_ARCH_INCLUDE_PATH}")
 diff --git a/stdlib/public/SwiftShims/LibcShims.h b/stdlib/public/SwiftShims/LibcShims.h
 index 5f6e995..3b90829 100644
 --- a/stdlib/public/SwiftShims/LibcShims.h
@@ -118,7 +115,7 @@ index 5f6e995..3b90829 100644
  double lgamma_r(double x, int *psigngam);
  long double lgammal_r(long double x, int *psigngam);
 diff --git a/stdlib/public/core/CTypes.swift b/stdlib/public/core/CTypes.swift
-index 12d1640..d5683b9 100644
+index 01495bd..5c147d3 100644
 --- a/stdlib/public/core/CTypes.swift
 +++ b/stdlib/public/core/CTypes.swift
 @@ -74,6 +74,7 @@ public typealias CLongDouble = Double
@@ -130,7 +127,7 @@ index 12d1640..d5683b9 100644
  // TODO: Fill in definitions for additional architectures as needed. IIRC
  // armv7 should map to Double, but arm64 and ppc64le should map to Float128,
 diff --git a/stdlib/public/runtime/MetadataCache.h b/stdlib/public/runtime/MetadataCache.h
-index 8222d05..5ae29e3 100644
+index 1f764ab..4bcce13 100644
 --- a/stdlib/public/runtime/MetadataCache.h
 +++ b/stdlib/public/runtime/MetadataCache.h
 @@ -275,6 +275,7 @@ public:
@@ -203,7 +200,7 @@ index 8222d05..5ae29e3 100644
  
        // Try to block this metadata initialization on that queue.
        // If this succeeds, we can't consider ourselves the initializing
-@@ -1038,7 +1039,7 @@ private:
+@@ -1042,7 +1043,7 @@ private:
        // We need to acquire the lock.  There could be an arbitrary number
        // of threads simultaneously trying to set the has-waiters flag, and we
        // have to make sure they start waiting before we notify the queue.
@@ -212,7 +209,7 @@ index 8222d05..5ae29e3 100644
      }
    }
  
-@@ -1101,6 +1102,8 @@ public:
+@@ -1105,6 +1106,8 @@ public:
      assert(dependency == queueEntry->Dependency);
  
      MetadataDependency otherDependency;
@@ -221,7 +218,7 @@ index 8222d05..5ae29e3 100644
      bool success = concurrency.Lock.withLock([&] {
        auto curInfo = PrivateMetadataTrackingInfo(
                                    TrackingInfo.load(std::memory_order_acquire));
-@@ -1137,6 +1140,7 @@ public:
+@@ -1141,6 +1144,7 @@ public:
        *completionQueue = queueEntry;
        return true;
      });
@@ -230,5 +227,5 @@ index 8222d05..5ae29e3 100644
      // Diagnose unbreakable dependency cycles.
      //
 -- 
-2.15.0
+2.16.2
 

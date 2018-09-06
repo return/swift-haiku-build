@@ -1,8 +1,7 @@
-From 816eb766c8029494f0811177caf3be4799bad47b Mon Sep 17 00:00:00 2001
+From 867be83b91cad3690c016ddf77b0375a09021102 Mon Sep 17 00:00:00 2001
 From: Calvin Hill <calvin@hakobaito.co.uk>
-Date: Thu, 11 Jan 2018 12:01:56 +0000
-Subject: [PATCH] swift-llvm: Update Haiku supporting patches for building
- swift llvm.
+Date: Wed, 15 Aug 2018 20:28:21 +0100
+Subject: [PATCH] llvm: Update command-line options in HandleLLVMOptions.cmake
 
 ---
  cmake/modules/HandleLLVMOptions.cmake |  2 +-
@@ -11,23 +10,23 @@ Subject: [PATCH] swift-llvm: Update Haiku supporting patches for building
  3 files changed, 21 insertions(+), 7 deletions(-)
 
 diff --git a/cmake/modules/HandleLLVMOptions.cmake b/cmake/modules/HandleLLVMOptions.cmake
-index 7126c4ba..ff4abee3 100644
+index efaad89f..058da869 100644
 --- a/cmake/modules/HandleLLVMOptions.cmake
 +++ b/cmake/modules/HandleLLVMOptions.cmake
-@@ -681,7 +681,7 @@ add_definitions( -D__STDC_LIMIT_MACROS )
- if (UNIX AND
-     CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND
-     CMAKE_GENERATOR STREQUAL "Ninja")
--  append("-fcolor-diagnostics" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
+@@ -723,7 +723,7 @@ if (UNIX AND
+     (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
+      (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
+       NOT (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 4.9))))
+-  append("-fdiagnostics-color" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
 +  append("-fdiagnostics-color=auto" CMAKE_C_FLAGS CMAKE_CXX_FLAGS)
  endif()
  
  # lld doesn't print colored diagnostics when invoked from Ninja
 diff --git a/lib/Support/Unix/Path.inc b/lib/Support/Unix/Path.inc
-index 45097eb9..cf154e85 100644
+index 7ad57d89..67b7ce8d 100644
 --- a/lib/Support/Unix/Path.inc
 +++ b/lib/Support/Unix/Path.inc
-@@ -97,7 +97,7 @@
+@@ -82,7 +82,7 @@
  #define STATVFS_F_FRSIZE(vfs) static_cast<uint64_t>(vfs.f_bsize)
  #endif
  
@@ -36,7 +35,7 @@ index 45097eb9..cf154e85 100644
  #define STATVFS_F_FLAG(vfs) (vfs).f_flag
  #else
  #define STATVFS_F_FLAG(vfs) (vfs).f_flags
-@@ -386,6 +386,9 @@ static bool is_local_impl(struct STATVFS &Vfs) {
+@@ -379,6 +379,9 @@ static bool is_local_impl(struct STATVFS &Vfs) {
    StringRef fstype(Vfs.f_basetype);
    // NFS is the only non-local fstype??
    return !fstype.equals("nfs");
@@ -47,10 +46,10 @@ index 45097eb9..cf154e85 100644
    return !!(STATVFS_F_FLAG(Vfs) & MNT_LOCAL);
  #endif
 diff --git a/tools/llvm-config/llvm-config.cpp b/tools/llvm-config/llvm-config.cpp
-index 08b096af..739213cd 100644
+index 892adc3b..c7d458bf 100644
 --- a/tools/llvm-config/llvm-config.cpp
 +++ b/tools/llvm-config/llvm-config.cpp
-@@ -332,11 +332,16 @@ int main(int argc, char **argv) {
+@@ -333,11 +333,16 @@ int main(int argc, char **argv) {
          ("-I" + ActiveIncludeDir + " " + "-I" + ActiveObjRoot + "/include");
    } else {
      ActivePrefix = CurrentExecPrefix;
@@ -68,7 +67,7 @@ index 08b096af..739213cd 100644
      ActiveCMakeDir = ActiveLibDir + "/cmake/llvm";
      ActiveIncludeOption = "-I" + ActiveIncludeDir;
    }
-@@ -556,10 +561,16 @@ int main(int argc, char **argv) {
+@@ -557,10 +562,16 @@ int main(int argc, char **argv) {
          OS << (LLVM_HAS_GLOBAL_ISEL ? "ON" : "OFF") << '\n';
        } else if (Arg == "--shared-mode") {
          PrintSharedMode = true;
@@ -90,5 +89,5 @@ index 08b096af..739213cd 100644
          LinkDyLib = false;
          LinkMode = BuiltSharedLibs ? LinkModeShared : LinkModeAuto;
 -- 
-2.15.0
+2.16.4
 

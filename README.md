@@ -1,6 +1,6 @@
 # Swift on Haiku - Google Summer of Code Documentation
 
-*(Last changed: 6th April 2018)*
+*(Last changed: 19th October 2018)*
 
 This gist documents the progress made on porting Swift to Haiku and has detailed instructions on building the toolchain from source.
 
@@ -42,7 +42,7 @@ _Please note that this is subject to frequent revisions and this information cou
 
 ### swift-llbuild
 
-As of this commit in [hrev51418](http://cgit.haiku-os.org/haiku/commit/?id=ccd42320c45658052d620804bb8e05e5bc327706) posix_spawn() and the spawn.h development header is available in Haiku.
+As of this commit in [hrev51418](http://cgit.haiku-os.org/haiku/commit/?id=ccd42320c45658052d620804bb8e05e5bc327706) posix\_spawn() and the spawn.h development header is available in Haiku.
 
 * ~~Requires \<spawn.h\> functions to be implemented.~~
 
@@ -74,14 +74,16 @@ As of this commit in [hrev51418](http://cgit.haiku-os.org/haiku/commit/?id=ccd42
 		* 30GB+ HDD space.
 
 * Minimum Software Requirements:
-	* LLVM / Clang _(llvm-4.0.1-2, llvm-clang-4.0.1-2)_
+	* GCC 7.3 _(gcc-7.3.0_2018\_05\_01-3)_
+	* GCC 7.3 Developement Libs _(gcc\_syslibs\_devel-7.3.0\_2018\_05\_01-3)_
+	* LLVM / Clang _(llvm6-6.0.1-4, llvm6-clang-6.0.1-4)_
 	* libedit _(libedit\_2015\_03\_21\_3.1-6)_
 	* CMake _(cmake-3.8.2-1)_
 	* Ninja _(ninja-1.6.0-1)_
 	* libuuid _(libuuid-1.0.3-4)_
 	* Python 3 _(python3-3.6.3-3)_
 	* libxml2 _(libxml2-2.9.3-5)_
-	* libsqlite3 _(libsqlite-3.19.2.0-1)_
+	* libsqlite _(libsqlite-3.19.2.0-1)_
 	* libexecinfo _(libexecinfo-1.1.4)_
 	* libicu _(icu-57.1.2)_
 	* libiconv
@@ -109,7 +111,7 @@ This section should be useful to those who wish to develop or to continue fixing
 	
 1. Download the dependencies via `pkgman`.
 
-	`pkgman install llvm llvm_libs llvm_clang ninja cmake libedit_devel python3 icu icu_devel libiconv_devel libexecinfo_devel sqlite gcc_syslibs_devel curl_devel libuuid_devel git pkgconfig`
+	`pkgman install llvm6 llvm6_libs llvm6_clang ninja cmake devel:libedit python3 icu icu_devel devel:libiconv devel:libexecinfo devel:libsqlite3 devel:libgcc devel:libcurl devel:libuuid git pkgconfig`
 
 2. Create a folder to store the swift toolchain:
 

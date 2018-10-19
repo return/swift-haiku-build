@@ -1,0 +1,231 @@
+From 48976fb4964ee37b5f3665b1b7e26df4d1640d5a Mon Sep 17 00:00:00 2001
+From: Calvin Hill <calvin@hakobaito.co.uk>
+Date: Wed, 9 May 2018 19:08:21 +0100
+Subject: [PATCH] swift-haiku: Update patches for upstream swift.
+
+---
+ cmake/modules/AddSwift.cmake                       |  4 +--
+ stdlib/private/StdlibUnittest/StdlibUnittest.swift |  2 +-
+ .../SwiftPrivateLibcExtras/Subprocess.swift        |  2 +-
+ .../PthreadBarriers.swift                          |  2 +-
+ stdlib/public/Platform/CMakeLists.txt              |  6 ++--
+ stdlib/public/SwiftShims/LibcShims.h               |  4 ++-
+ stdlib/public/core/CTypes.swift                    |  1 +
+ stdlib/public/runtime/MetadataCache.h              | 40 ++++++++++++----------
+ 8 files changed, 35 insertions(+), 26 deletions(-)
+
+diff --git a/cmake/modules/AddSwift.cmake b/cmake/modules/AddSwift.cmake
+index c1c90dd..037d6a8 100644
+--- a/cmake/modules/AddSwift.cmake
++++ b/cmake/modules/AddSwift.cmake
+@@ -448,7 +448,7 @@ function(_add_variant_link_flags)
+       list(APPEND result "-fuse-ld=lld")
+     elseif(SWIFT_ENABLE_GOLD_LINKER AND
+        "${SWIFT_SDK_${LFLAGS_SDK}_OBJECT_FORMAT}" STREQUAL "ELF")
+-      list(APPEND result "-fuse-ld=gold")
++      list(APPEND result "-use-ld=ld")
+     endif()
+   endif()
+ 
+@@ -1659,7 +1659,7 @@ function(add_swift_library name)
+                  "${SWIFT_${sdk}_${arch}_ICU_UC}")
+             # temporary fix for atomic needing to be
+             # after object files for libswiftCore.so
+-            if("${sdk}" STREQUAL "ANDROID")
++            if("${sdk}" STREQUAL "ANDROID" OR "${sdk}" STREQUAL "HAIKU")
+               list(APPEND swiftlib_private_link_libraries_targets
+                    "-latomic")
+             # the same issue on FreeBSD, missing symbols:
+diff --git a/stdlib/private/StdlibUnittest/StdlibUnittest.swift b/stdlib/private/StdlibUnittest/StdlibUnittest.swift
+index 3c3239e..4829443 100644
+--- a/stdlib/private/StdlibUnittest/StdlibUnittest.swift
++++ b/stdlib/private/StdlibUnittest/StdlibUnittest.swift
+@@ -1030,7 +1030,7 @@ struct _ParentProcess {
+       var ret: CInt
+       repeat {
+         ret = _stdlib_select(&readfds, &writefds, &errorfds, nil)
+-      } while ret == -1  &&  errno == EINTR
++      } while ret == -1  &&  errno == 10
+       if ret <= 0 {
+         fatalError("select() returned an error")
+       }
+diff --git a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
+index a516fe7..7c2fba3 100644
+--- a/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
++++ b/stdlib/private/SwiftPrivateLibcExtras/Subprocess.swift
+@@ -278,7 +278,7 @@ public func posixWaitpid(_ pid: pid_t) -> ProcessTerminationStatus {
+   }
+ #else
+   while waitpid(pid, &status, 0) < 0 {
+-    if errno != EINTR {
++    if errno != 10 {
+       preconditionFailure("waitpid() failed")
+     }
+   }
+diff --git a/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift b/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
+index 6136bb9..9339b90 100644
+--- a/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
++++ b/stdlib/private/SwiftPrivatePthreadExtras/PthreadBarriers.swift
+@@ -69,7 +69,7 @@ public func _stdlib_pthread_barrier_init(
+ ) -> CInt {
+   barrier.pointee = _stdlib_pthread_barrier_t()
+   if count == 0 {
+-    errno = EINVAL
++    errno = 11
+     return -1
+   }
+   barrier.pointee.mutex = UnsafeMutablePointer.allocate(capacity: 1)
+diff --git a/stdlib/public/Platform/CMakeLists.txt b/stdlib/public/Platform/CMakeLists.txt
+index 92345b9..caaf81d 100644
+--- a/stdlib/public/Platform/CMakeLists.txt
++++ b/stdlib/public/Platform/CMakeLists.txt
+@@ -67,8 +67,10 @@ foreach(sdk ${SWIFT_SDKS})
+       set(GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH}/${CMAKE_LIBRARY_ARCHITECTURE}")
+     endif()
+ 
+-    set(GLIBC_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH}")
+-    set(GLIBC_ARCH_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH}")
++    if(NOT "${sdk}" STREQUAL "HAIKU")
++        set(GLIBC_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_INCLUDE_PATH}")
++        set(GLIBC_ARCH_INCLUDE_PATH "${GLIBC_SYSROOT_RELATIVE_ARCH_INCLUDE_PATH}")
++    endif()
+ 
+     if(NOT "${SWIFT_SDK_${sdk}_ARCH_${arch}_PATH}" STREQUAL "/" AND NOT "${sdk}" STREQUAL "ANDROID")
+       set(GLIBC_INCLUDE_PATH "${SWIFT_SDK_${sdk}_ARCH_${arch}_PATH}${GLIBC_INCLUDE_PATH}")
+diff --git a/stdlib/public/SwiftShims/LibcShims.h b/stdlib/public/SwiftShims/LibcShims.h
+index 5f6e995..3b90829 100644
+--- a/stdlib/public/SwiftShims/LibcShims.h
++++ b/stdlib/public/SwiftShims/LibcShims.h
+@@ -59,6 +59,8 @@ typedef __swift_uint32_t __swift_mode_t;
+ typedef __swift_uint16_t __swift_mode_t;
+ #elif defined(_WIN32)
+ typedef __swift_int32_t __swift_mode_t;
++#elif defined(__HAIKU__)
++typedef __swift_uint32_t __swift_mode_t;
+ #else  // just guessing
+ typedef __swift_uint16_t __swift_mode_t;
+ #endif
+@@ -185,7 +187,7 @@ long double _stdlib_squareRootl(long double _self) {
+ // Apple's math.h does not declare lgamma_r() etc by default, but they're
+ // unconditionally exported by libsystem_m.dylib in all OS versions that
+ // support Swift development; we simply need to provide declarations here.
+-#if defined(__APPLE__)
++#if defined(__APPLE__)  || defined(__HAIKU__)
+ float lgammaf_r(float x, int *psigngam);
+ double lgamma_r(double x, int *psigngam);
+ long double lgammal_r(long double x, int *psigngam);
+diff --git a/stdlib/public/core/CTypes.swift b/stdlib/public/core/CTypes.swift
+index 01495bd..5c147d3 100644
+--- a/stdlib/public/core/CTypes.swift
++++ b/stdlib/public/core/CTypes.swift
+@@ -74,6 +74,7 @@ public typealias CLongDouble = Double
+ // On Windows, long double is always Double.
+ public typealias CLongDouble = Double
+ #elseif os(Linux)
++#elseif os(Haiku)
+ // On Linux/x86, long double is Float80.
+ // TODO: Fill in definitions for additional architectures as needed. IIRC
+ // armv7 should map to Double, but arm64 and ppc64le should map to Float128,
+diff --git a/stdlib/public/runtime/MetadataCache.h b/stdlib/public/runtime/MetadataCache.h
+index 1f764ab..4bcce13 100644
+--- a/stdlib/public/runtime/MetadataCache.h
++++ b/stdlib/public/runtime/MetadataCache.h
+@@ -275,6 +275,7 @@ public:
+     //
+     // We're adding a bit of complexity here for the advantage that, in the
+     // absence of early contention, we never touch the lock at all.
++ /*
+     concurrency.Lock.withLockOrWait(concurrency.Queue, [&] {
+       // Reload the current value.
+       value = Value.load(std::memory_order_acquire);
+@@ -297,7 +298,7 @@ public:
+       // Otherwise, the initializing thread has finished, and we must not wait.
+       return true;
+     });
+-
++*/
+     return reinterpret_cast<ValueType>(value);
+   }
+ 
+@@ -315,9 +316,9 @@ public:
+     assert(isSpecialValue(oldValue));
+ 
+     // If there were any waiters, acquire the lock and notify the queue.
+-    if (oldValue != Empty_NoWaiters) {
+-      concurrency.Lock.withLockThenNotifyAll(concurrency.Queue, []{});
+-    }
++//    if (oldValue != Empty_NoWaiters) {
++//      concurrency.Lock.withLockThenNotifyAll(concurrency.Queue, []{});
++//    }
+ 
+     return origValue;
+   }
+@@ -865,9 +866,9 @@ private:
+         assert(hasProgressSinceLastEnqueueAttempt);
+ 
+         // Claim any satisfied completion-queue entries (i.e. all of them).
+-        concurrency.Lock.withLock([&] {
+-          claimSatisfiedQueueEntriesWithLock(curTrackingInfo, claimedQueue);
+-        });
++//        concurrency.Lock.withLock([&] {
++//          claimSatisfiedQueueEntriesWithLock(curTrackingInfo, claimedQueue);
++//        });
+ 
+         // That will destroy the queue entry if we had one, so make sure we
+         // don't try to use it.
+@@ -890,16 +891,16 @@ private:
+       // Set the dependency on the queue entry.  This has to happen under
+       // the lock to protect against other threads checking for dependency
+       // cycles.
+-      concurrency.Lock.withLock([&] {
+-        prepareToEnqueueWithLock(queueEntry, tryInitializeResult.Dependency);
+-        assert(LockedStorageKind == LSK::QueueEntry);
+-
+-        // Grab any satisfied queue entries while we have the lock.
+-        if (hasProgressSinceLastEnqueueAttempt) {
+-          hasProgressSinceLastEnqueueAttempt = false;
+-          claimSatisfiedQueueEntriesWithLock(curTrackingInfo, claimedQueue);
+-        }
+-      });
++//      concurrency.Lock.withLock([&] {
++//        prepareToEnqueueWithLock(queueEntry, tryInitializeResult.Dependency);
++//        assert(LockedStorageKind == LSK::QueueEntry);
++//
++//        // Grab any satisfied queue entries while we have the lock.
++//        if (hasProgressSinceLastEnqueueAttempt) {
++//          hasProgressSinceLastEnqueueAttempt = false;
++//          claimSatisfiedQueueEntriesWithLock(curTrackingInfo, claimedQueue);
++//        }
++//      });
+ 
+       // Try to block this metadata initialization on that queue.
+       // If this succeeds, we can't consider ourselves the initializing
+@@ -1042,7 +1043,7 @@ private:
+       // We need to acquire the lock.  There could be an arbitrary number
+       // of threads simultaneously trying to set the has-waiters flag, and we
+       // have to make sure they start waiting before we notify the queue.
+-      concurrency.Lock.withLockThenNotifyAll(concurrency.Queue, [] {});
++//      concurrency.Lock.withLockThenNotifyAll(concurrency.Queue, [] {});
+     }
+   }
+ 
+@@ -1105,6 +1106,8 @@ public:
+     assert(dependency == queueEntry->Dependency);
+ 
+     MetadataDependency otherDependency;
++    bool success = false;
++    /*
+     bool success = concurrency.Lock.withLock([&] {
+       auto curInfo = PrivateMetadataTrackingInfo(
+                                   TrackingInfo.load(std::memory_order_acquire));
+@@ -1141,6 +1144,7 @@ public:
+       *completionQueue = queueEntry;
+       return true;
+     });
++    */
+ 
+     // Diagnose unbreakable dependency cycles.
+     //
+-- 
+2.16.2
+

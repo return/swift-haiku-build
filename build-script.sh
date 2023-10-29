@@ -1,4 +1,26 @@
-./swift/utils/build-script -R --extra-cmake-options='-DLLVM_ENABLE_ASSERTIONS=TRUE \
--DCMAKE_SKIP_RPATH=FALSE -DLLVM_ENABLE_RTTI=ON -DLLVM_TARGETS_TO_BUILD=X86 \
--DLLVM_ENABLE_THREADS=ON -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC' \
---stdlib-deployment-targets=haiku-x86_64 $@
+./swift/utils/build-script \
+    -R \
+    --bootstrapping=off \
+    --llvm-targets-to-build=X86 \
+    --skip-build-clang-tools-extra \
+    --skip-build-compiler-rt \
+    --llvm-cmake-options="\
+        -DLLVM_ENABLE_ASSERTIONS=TRUE,\
+        -DCMAKE_SKIP_RPATH=FALSE,\
+        -DLLVM_ENABLE_RTTI=ON,\
+        -DLLVM_ENABLE_THREADS=ON,\
+        -DCMAKE_C_FLAGS=-fPIC,\
+        -DCMAKE_CXX_FLAGS=-fPIC,\
+        -DCMAKE_SHARED_LINKER_FLAGS='-lnetwork',\
+        -DCMAKE_EXE_LINKER_FLAGS='-lnetwork'" \
+    --extra-cmake-options="\
+        -DSWIFT_ENABLE_DISPATCH=OFF,\
+        -DSWIFT_BUILD_SOURCEKIT=OFF,\
+        -DSWIFT_ENABLE_EXPERIMENTAL_CONCURRENCY=OFF,\
+        -DSWIFT_IMPLICIT_CONCURRENCY_IMPORT=OFF,\
+        -DSWIFT_ENABLE_EXPERIMENTAL_DISTRIBUTED=OFF,\
+        -DSWIFT_ENABLE_EXPERIMENTAL_DIFFERENTIABLE_PROGRAMMING=OFF,\
+        -DSWIFT_ENABLE_EXPERIMENTAL_OBSERVATION=OFF,\
+        -DSWIFT_USE_LINKER=lld,\
+        -DLLVM_USE_LINKER=lld" \
+    --stdlib-deployment-targets=haiku-x86_64 $@

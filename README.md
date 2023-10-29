@@ -1,6 +1,6 @@
 # Swift on Haiku - Google Summer of Code Documentation
 
-*(Last changed: 19th October 2018)*
+*(Last changed: 29th October 2023)*
 
 This gist documents the progress made on porting Swift to Haiku and has detailed instructions on building the toolchain from source.
 
@@ -44,8 +44,6 @@ _Please note that this is subject to frequent revisions and this information cou
 
 As of this commit in [hrev51418](http://cgit.haiku-os.org/haiku/commit/?id=ccd42320c45658052d620804bb8e05e5bc327706) posix\_spawn() and the spawn.h development header is available in Haiku.
 
-* ~~Requires \<spawn.h\> functions to be implemented.~~
-
 ### swift-lldb
 
 * Requires LLDB to be ported to Haiku.
@@ -74,9 +72,9 @@ As of this commit in [hrev51418](http://cgit.haiku-os.org/haiku/commit/?id=ccd42
 		* 30GB+ HDD space.
 
 * Minimum Software Requirements:
-	* GCC 7.3 _(gcc-7.3.0_2018\_05\_01-3)_
-	* GCC 7.3 Developement Libs _(gcc\_syslibs\_devel-7.3.0\_2018\_05\_01-3)_
-	* LLVM / Clang _(llvm6-6.0.1-4, llvm6-clang-6.0.1-4)_
+	* GCC 13.2.0 _(gcc-13.2.0\_2023\_08_10-3)_   _(gcc-7.3.0_2018\_05\_01-3)_
+	* GCC 13.2.0 Developement Libs _(gcc\_syslibs\_devel-13.2.0\_2023_08\_10-3)_
+	* LLVM / Clang / LLD
 	* libedit _(libedit\_2015\_03\_21\_3.1-6)_
 	* CMake _(cmake-3.8.2-1)_
 	* Ninja _(ninja-1.6.0-1)_
@@ -111,7 +109,7 @@ This section should be useful to those who wish to develop or to continue fixing
 	
 1. Download the dependencies via `pkgman`.
 
-	`pkgman install llvm6 llvm6_libs llvm6_clang ninja cmake devel:libedit python3 icu icu_devel devel:libiconv devel:libexecinfo devel:libsqlite3 devel:libgcc devel:libcurl devel:libuuid git pkgconfig`
+	`pkgman install llvm17 llvm17_libs llvm17_clang llvm17_libunwind_devel llvm17_lld ninja cmake devel:libedit python3 icu icu_devel devel:libiconv devel:libexecinfo devel:libsqlite3 devel:libgcc devel:libcurl devel:libuuid git pkgconfig`
 
 2. Create a folder to store the swift toolchain:
 

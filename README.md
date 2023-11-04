@@ -1,6 +1,6 @@
 # Swift on Haiku - Google Summer of Code Documentation
 
-*(Last changed: 29th October 2023)*
+*(Last changed: 4th November 2023)*
 
 This gist documents the progress made on porting Swift to Haiku and has detailed instructions on building the toolchain from source.
 
@@ -75,6 +75,13 @@ As of this commit in [hrev51418](http://cgit.haiku-os.org/haiku/commit/?id=ccd42
 	* GCC 13.2.0 _(gcc-13.2.0\_2023\_08_10-3)_   _(gcc-7.3.0_2018\_05\_01-3)_
 	* GCC 13.2.0 Developement Libs _(gcc\_syslibs\_devel-13.2.0\_2023_08\_10-3)_
 	* LLVM / Clang / LLD
+	    * llvm17 _(17.0.1-4)_
+		* lvm17_libs _(17.0.1-4)_
+    	* llvm17_libunwind _(17.0.1-4)_
+    	* llvm17_clang _(17.0.1-4)_
+   		* llvm17_lld _(17.0.1-4)_
+    	* llvm17_libunwind_devel _(17.0.1-4)_
+    	* llvm17_clang_analysis _(17.0.1-4)_
 	* libedit _(libedit\_2015\_03\_21\_3.1-6)_
 	* CMake _(cmake-3.8.2-1)_
 	* Ninja _(ninja-1.6.0-1)_
